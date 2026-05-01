@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  name          String
+  avatarUrl     String?  @map("avatar_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  categories         Category[]
+  transactions        Transaction[]
+  budgets            Budget[]
+  userSettings       UserSettings?
+  userNotifications   UserNotifications?
+  sessions            Session[]
+}
+
+model Category {
+  id             String      @id @default(uuid()) @db.Uuid
+  userId         String      @map("user_id")
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  icon           String      @default("Tag")
+  color          String      @default("from-blue-500 to-blue-600")
+  budgetMonthly  Decimal?    @map("budget_monthly") @db.Decimal(10, 2)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  transactions Transaction[]
+  budgets       Budget[]
+}
+
+model Transaction {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?     @map("category_id")
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  description String
+  amount      Decimal    @db.Decimal(10, 2)
+  type        String
+  date        DateTime    @db.Date
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([date])
+  @@index([type])
+}
+
+model Budget {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @map("user_id")
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId    String      @map("category_id")
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount        Decimal    @db.Decimal(10, 2)
+  periodMonth   Int         @map("period_month")
+  periodYear    Int         @map("period_year")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId, categoryId, periodMonth, periodYear])
+  @@index([userId])
+  @@index([periodYear, periodMonth])
+}
+
+model UserSettings {
+  id               String      @id @default(uuid()) @db.Uuid
+  userId           String      @map("user_id")
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency         String      @default("USD")
+  dateFormat       String      @map("date_format") @default("DD/MM/YYYY")
+  firstDayOfWeek   String      @map("first_day_of_week") @default("Monday")
+  savingsGoal      Decimal?    @map("savings_goal") @db.Decimal(10, 2)
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId])
+}
+
+model UserNotifications {
+  id                      String      @id @default(uuid()) @db.Uuid
+  userId                  String      @map("user_id")
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetAlertsEnabled  Boolean     @map("budget_alerts_enabled") @default(true)
+  alertAt50              Boolean     @map("alert_at_50") @default(true)
+  alertAt80              Boolean     @map("alert_at_80") @default(true)
+  alertAt100             Boolean     @map("alert_at_100") @default(true)
+  paymentRemindersEnabled Boolean     @map("payment_reminders_enabled") @default(true)
+  reminderDaysBefore    Int         @map("reminder_days_before") @default(3)
+  createdAt               DateTime    @default(now()) @map("created_at")
+  updatedAt               DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId])
+}
+
+model Session {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device      String
+  location    String
+  lastActive  DateTime  @map("last_active")
+  isCurrent   Boolean   @default(false) @map("is_current")
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([isCurrent])
+}
