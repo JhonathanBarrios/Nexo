@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+# App Gastos
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PWA de finanzas personales para gestionar gastos, ingresos y pagos recurrentes.
 
-Currently, two official plugins are available:
+## 🚀 Stack Tecnológico
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend**: React 19 + TypeScript + Vite 8
+- **Estilos**: Tailwind CSS v4
+- **Estado**: Zustand
+- **Base de datos**: Supabase (PostgreSQL)
+- **PWA**: Vite PWA Plugin
+- **Gráficos**: Recharts
+- **Animaciones**: Framer Motion
+- **Enrutamiento**: React Router v7
 
-## React Compiler
+## ✨ Características
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 📊 Dashboard con resumen financiero
+- 💳 Registro de transacciones (ingresos/gastos)
+- 🔄 Pagos recurrentes automáticos
+- 📈 Análisis y gráficos de gastos
+- 📱 Progressive Web App (instalable)
+- 🌓 Modo oscuro
+- 🔐 Autenticación con Supabase
 
-## Expanding the ESLint configuration
+## 📦 Instalación
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔑 Variables de Entorno
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Copia `.env.example` a `.env` y configura:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key
 ```
+
+Obtén las credenciales en [Supabase Dashboard](https://supabase.com/dashboard).
+
+## 🗄️ Base de Datos
+
+Ejecuta las migraciones en Supabase:
+
+1. Ve al SQL Editor en Supabase Dashboard
+2. Ejecuta los archivos en `migrations/` en orden:
+   - `20260430000001_initial_schema.sql`
+   - `20260430000002_default_categories_trigger.sql`
+   - `20260430000003_auth_users_sync.sql`
+   - `20260430000004_sync_existing_users.sql`
+   - `20260501000001_recurring_payments.sql`
+
+## 🏃 Scripts
+
+```bash
+npm run dev          # Servidor de desarrollo (http://localhost:5173)
+npm run build        # Build para producción
+npm run lint         # ESLint
+npm run preview      # Previsualizar build de producción
+```
+
+## 🚀 Despliegue
+
+### Vercel
+
+1. Conecta este repo a Vercel
+2. Configura las variables de entorno en Vercel Dashboard
+3. Deploy automático en cada push a main
+
+### Netlify
+
+1. Conecta repo a Netlify
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Configura variables de entorno
+
+## 📝 Licencia
+
+MIT
