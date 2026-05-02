@@ -5,6 +5,7 @@ export interface Transaction {
   id: string
   user_id: string
   category_id: string | null
+  card_id: string | null
   description: string
   amount: number
   type: 'income' | 'expense'

@@ -42,7 +42,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: null,
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
@@ -55,8 +55,17 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 // 24 hours
               }
             }
+          },
+          {
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-resources'
+            }
           }
-        ]
+        ],
+        clientsClaim: true,
+        skipWaiting: true
       }
     })
   ],

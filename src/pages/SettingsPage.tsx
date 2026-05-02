@@ -18,10 +18,12 @@ import {
   Lock,
   Eye,
   EyeOff,
+  DollarSign,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useCategories, type Category } from '../hooks/useCategories';
 import { useAuthStore } from '../store/authStore';
+import { useNotifications } from '../hooks/useNotifications';
 import { supabase } from '../api/supabase';
 import toast from 'react-hot-toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -55,18 +57,6 @@ export default function SettingsPage() {
     firstDayOfWeek: 'Monday',
     savingsGoal: 0,
     photo: null,
-  });
-  const [notificationSettings, setNotificationSettings] = useState({
-    budgetAlerts: {
-      enabled: true,
-      alertAt50: true,
-      alertAt80: true,
-      alertAt100: true,
-    },
-    paymentReminders: {
-      enabled: true,
-      reminderDaysBefore: 3,
-    },
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -102,7 +92,8 @@ export default function SettingsPage() {
     },
   ]);
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories();
-  const { user } = useAuthStore();
+  const { user, updatePassword } = useAuthStore();
+  const { settings: notificationSettings, updateSettings: updateNotificationSettings } = useNotifications(user?.id);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({ name: '', icon: 'Tag', color: 'from-blue-500 to-blue-600', budget: '' });
@@ -208,71 +199,144 @@ export default function SettingsPage() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    try {
+      await updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      toast.success('Contraseña actualizada correctamente');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      toast.error('Error: ' + error.message);
+    }
+  };
+
   const getIconComponent = (iconName: string) => {
     const Icon = (LucideIcons as any)[iconName];
     return Icon ? <Icon className="w-5 h-5" /> : <Tag className="w-5 h-5" />;
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-white text-3xl font-bold mb-2">Configuración</h1>
-        <p className="text-slate-400">
+        <h1 className="text-white text-2xl md:text-3xl font-bold mb-2">Configuración</h1>
+        <p className="text-slate-400 text-sm md:text-base">
           Personaliza tu experiencia de gestión financiera
         </p>
       </motion.div>
 
-      {/* Settings Navigation */}
-      <div className="flex gap-6 mb-8">
-        <button
-          onClick={() => setActiveSection('categories')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-            activeSection === 'categories'
-              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-              : 'bg-slate-900/80 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Tag className="w-5 h-5" />
-          Categorías
-        </button>
-        <button
-          onClick={() => setActiveSection('profile')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-            activeSection === 'profile'
-              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-              : 'bg-slate-900/80 text-slate-400 hover:text-white'
-          }`}
-        >
-          <User className="w-5 h-5" />
-          Perfil
-        </button>
-        <button
-          onClick={() => setActiveSection('notifications')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-            activeSection === 'notifications'
-              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-              : 'bg-slate-900/80 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Bell className="w-5 h-5" />
-          Notificaciones
-        </button>
-        <button
-          onClick={() => setActiveSection('security')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-            activeSection === 'security'
-              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-              : 'bg-slate-900/80 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Shield className="w-5 h-5" />
-          Seguridad
-        </button>
+      {/* Settings Navigation - Mobile Friendly */}
+      <div className="mb-6">
+        {/* Mobile: Scrollable horizontal tabs with better sizing */}
+        <div className="flex gap-1.5 overflow-x-auto pb-2 md:hidden scrollbar-hide -mx-4 px-4">
+          <button
+            onClick={() => setActiveSection('categories')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex-shrink-0 ${
+              activeSection === 'categories'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            Categorías
+          </button>
+          <button
+            onClick={() => setActiveSection('profile')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex-shrink-0 ${
+              activeSection === 'profile'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            Perfil
+          </button>
+          <button
+            onClick={() => setActiveSection('notifications')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex-shrink-0 ${
+              activeSection === 'notifications'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            Notif.
+          </button>
+          <button
+            onClick={() => setActiveSection('security')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex-shrink-0 ${
+              activeSection === 'security'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            Seguridad
+          </button>
+        </div>
+
+        {/* Desktop: Horizontal buttons */}
+        <div className="hidden md:flex gap-4">
+          <button
+            onClick={() => setActiveSection('categories')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              activeSection === 'categories'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Tag className="w-5 h-5" />
+            Categorías
+          </button>
+          <button
+            onClick={() => setActiveSection('profile')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              activeSection === 'profile'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            Perfil
+          </button>
+          <button
+            onClick={() => setActiveSection('notifications')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              activeSection === 'notifications'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Bell className="w-5 h-5" />
+            Notificaciones
+          </button>
+          <button
+            onClick={() => setActiveSection('security')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+              activeSection === 'security'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-900/80 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Shield className="w-5 h-5" />
+            Seguridad
+          </button>
+        </div>
       </div>
 
       {/* Categories Section */}
@@ -280,22 +344,22 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50"
+          className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/50"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-white text-xl font-semibold">Gestión de Categorías</h2>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-3">
+            <h2 className="text-white text-lg md:text-xl font-semibold">Gestión de Categorías</h2>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleAddCategory}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all text-sm md:text-base"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4 md:w-5 md:h-5" />
               Nueva Categoría
             </motion.button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {categories.map((category) => (
               <motion.div
                 key={category.id}
@@ -306,7 +370,7 @@ export default function SettingsPage() {
                   <div className={`w-12 h-12 bg-gradient-to-br ${category.color} rounded-xl flex items-center justify-center shadow-lg`}>
                     {getIconComponent(category.icon)}
                   </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => handleEditCategory(category)}
                       className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
@@ -378,18 +442,6 @@ export default function SettingsPage() {
                 />
                 <p className="text-slate-500 text-xs mt-1">El email no se puede cambiar</p>
               </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleUpdateProfile}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
-              >
-                <Save className="w-5 h-5" />
-                Guardar Cambios
-              </motion.button>
             </div>
           </div>
 
@@ -500,18 +552,15 @@ export default function SettingsPage() {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={notificationSettings.budgetAlerts.enabled}
-                  onChange={(e) => setNotificationSettings({
-                    ...notificationSettings,
-                    budgetAlerts: { ...notificationSettings.budgetAlerts, enabled: e.target.checked }
-                  })}
+                  checked={notificationSettings.budget_alerts_enabled}
+                  onChange={(e) => updateNotificationSettings({ budget_alerts_enabled: e.target.checked })}
                   className="sr-only peer"
                 />
                 <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-purple-600"></div>
               </label>
             </div>
 
-            {notificationSettings.budgetAlerts.enabled && (
+            {notificationSettings.budget_alerts_enabled && (
               <div className="space-y-4 pt-4 border-t border-slate-700">
                 <label className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
@@ -525,11 +574,8 @@ export default function SettingsPage() {
                   </div>
                   <input
                     type="checkbox"
-                    checked={notificationSettings.budgetAlerts.alertAt50}
-                    onChange={(e) => setNotificationSettings({
-                      ...notificationSettings,
-                      budgetAlerts: { ...notificationSettings.budgetAlerts, alertAt50: e.target.checked }
-                    })}
+                    checked={notificationSettings.alert_at_50}
+                    onChange={(e) => updateNotificationSettings({ alert_at_50: e.target.checked })}
                     className="w-5 h-5 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                   />
                 </label>
@@ -546,11 +592,8 @@ export default function SettingsPage() {
                   </div>
                   <input
                     type="checkbox"
-                    checked={notificationSettings.budgetAlerts.alertAt80}
-                    onChange={(e) => setNotificationSettings({
-                      ...notificationSettings,
-                      budgetAlerts: { ...notificationSettings.budgetAlerts, alertAt80: e.target.checked }
-                    })}
+                    checked={notificationSettings.alert_at_80}
+                    onChange={(e) => updateNotificationSettings({ alert_at_80: e.target.checked })}
                     className="w-5 h-5 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                   />
                 </label>
@@ -567,11 +610,8 @@ export default function SettingsPage() {
                   </div>
                   <input
                     type="checkbox"
-                    checked={notificationSettings.budgetAlerts.alertAt100}
-                    onChange={(e) => setNotificationSettings({
-                      ...notificationSettings,
-                      budgetAlerts: { ...notificationSettings.budgetAlerts, alertAt100: e.target.checked }
-                    })}
+                    checked={notificationSettings.alert_at_100}
+                    onChange={(e) => updateNotificationSettings({ alert_at_100: e.target.checked })}
                     className="w-5 h-5 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                   />
                 </label>
@@ -594,18 +634,15 @@ export default function SettingsPage() {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={notificationSettings.paymentReminders.enabled}
-                  onChange={(e) => setNotificationSettings({
-                    ...notificationSettings,
-                    paymentReminders: { ...notificationSettings.paymentReminders, enabled: e.target.checked }
-                  })}
+                  checked={notificationSettings.payment_reminders_enabled}
+                  onChange={(e) => updateNotificationSettings({ payment_reminders_enabled: e.target.checked })}
                   className="sr-only peer"
                 />
                 <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-purple-600"></div>
               </label>
             </div>
 
-            {notificationSettings.paymentReminders.enabled && (
+            {notificationSettings.payment_reminders_enabled && (
               <div className="pt-4 border-t border-slate-700">
                 <label className="block text-sm font-medium text-slate-300 mb-3">
                   Días antes del vencimiento
@@ -614,12 +651,9 @@ export default function SettingsPage() {
                   {[1, 3, 7, 14].map((days) => (
                     <button
                       key={days}
-                      onClick={() => setNotificationSettings({
-                        ...notificationSettings,
-                        paymentReminders: { ...notificationSettings.paymentReminders, reminderDaysBefore: days }
-                      })}
+                      onClick={() => updateNotificationSettings({ reminder_days_before: days })}
                       className={`py-3 rounded-xl font-medium transition-all ${
-                        notificationSettings.paymentReminders.reminderDaysBefore === days
+                        notificationSettings.reminder_days_before === days
                           ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
                           : 'bg-slate-800/50 text-slate-400 hover:text-white'
                       }`}
@@ -630,18 +664,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
-            >
-              <Save className="w-5 h-5" />
-              Guardar Cambios
-            </motion.button>
           </div>
         </motion.div>
       )}
@@ -665,7 +687,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                   Contraseña Actual
@@ -735,12 +757,13 @@ export default function SettingsPage() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                type="submit"
                 className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-5 h-5" />
                 Actualizar Contraseña
               </motion.button>
-            </div>
+            </form>
           </div>
 
           {/* Active Sessions */}
@@ -825,17 +848,17 @@ export default function SettingsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-slate-800 shadow-2xl"
+              className="bg-slate-900 rounded-2xl p-4 md:p-8 max-w-md w-full border border-slate-800 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-white text-2xl font-bold">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <h2 className="text-white text-xl md:text-2xl font-bold">
                   {editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}
                 </h2>
                 <button
                   onClick={() => setShowCategoryModal(false)}
                   className="text-slate-400 hover:text-white transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
               </div>
 
@@ -858,7 +881,7 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Icono
                   </label>
-                  <div className="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-800/50 rounded-xl border border-slate-700">
+                  <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-800/50 rounded-xl border border-slate-700">
                     {iconOptions.map((icon) => (
                       <button
                         key={icon}
@@ -880,7 +903,7 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Color
                   </label>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
                     {colorOptions.map((color) => (
                       <button
                         key={color}
@@ -898,13 +921,19 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Presupuesto Mensual (opcional)
                   </label>
-                  <input
-                    type="number"
-                    value={formData.budget}
-                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                    placeholder="0.00"
-                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={formData.budget ? Number(formData.budget).toLocaleString('es-CO') : ''}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/\D/g, '');
+                        setFormData({ ...formData, budget: numericValue });
+                      }}
+                      placeholder="0"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
 
                 <motion.button

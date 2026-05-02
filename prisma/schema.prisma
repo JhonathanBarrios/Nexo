@@ -21,6 +21,7 @@ model User {
   userSettings       UserSettings?
   userNotifications   UserNotifications?
   sessions            Session[]
+  cards              Card[]
 }
 
 model Category {
@@ -43,6 +44,8 @@ model Transaction {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoryId  String?     @map("category_id")
   category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  cardId      String?     @map("card_id")
+  card        Card?       @relation(fields: [cardId], references: [id], onDelete: SetNull)
   description String
   amount      Decimal    @db.Decimal(10, 2)
   type        String
@@ -53,6 +56,7 @@ model Transaction {
 
   @@index([userId])
   @@index([categoryId])
+  @@index([cardId])
   @@index([date])
   @@index([type])
 }
@@ -116,4 +120,26 @@ model Session {
 
   @@index([userId])
   @@index([isCurrent])
+}
+
+model Card {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  bank          String
+  type          String
+  lastFour      String    @map("last_four")
+  creditLimit   Decimal?  @map("credit_limit") @db.Decimal(10, 2)
+  cutDate       Int?      @map("cut_date")
+  paymentDate   Int?      @map("payment_date")
+  color         String    @default("#6366f1")
+  icon          String    @default("CreditCard")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  transactions  Transaction[]
+
+  @@index([userId])
+  @@index([isActive])
 }

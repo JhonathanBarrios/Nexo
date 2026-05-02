@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, Plus, Minus, Calendar, Tag, DollarSign } from 'lucide-react'
+import { X, Plus, Minus, Calendar, Tag, DollarSign, CreditCard } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
 import { useTransactions } from '../hooks/useTransactions'
+import { useCards } from '../hooks/useCards'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 
@@ -18,10 +19,12 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [cardId, setCardId] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
   
   const { categories } = useCategories()
+  const { cards } = useCards()
   const { createTransaction, updateTransaction } = useTransactions()
   const { user } = useAuthStore()
 
@@ -31,12 +34,14 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         setDescription(editingTransaction.description)
         setAmount(editingTransaction.amount.toString())
         setCategoryId(editingTransaction.category_id || '')
+        setCardId(editingTransaction.card_id || '')
         setDate(editingTransaction.date)
         setType(editingTransaction.type)
       } else {
         setDescription('')
         setAmount('')
         setCategoryId('')
+        setCardId('')
         setDate(new Date().toISOString().split('T')[0])
         setType('expense')
       }
@@ -57,6 +62,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
       if (editingTransaction) {
         await updateTransaction(editingTransaction.id, {
           category_id: categoryId || null,
+          card_id: cardId || null,
           description,
           amount: parseFloat(amount),
           type,
@@ -68,6 +74,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         await createTransaction({
           user_id: user.id,
           category_id: categoryId || null,
+          card_id: cardId || null,
           description,
           amount: parseFloat(amount),
           type,
@@ -164,13 +171,15 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      type="text"
+                      value={amount ? Number(amount).toLocaleString('es-CO') : ''}
+                      onChange={(e) => {
+                        // Remove non-numeric characters and convert to number
+                        const numericValue = e.target.value.replace(/\D/g, '');
+                        setAmount(numericValue);
+                      }}
                       className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
+                      placeholder="0"
                       required
                     />
                   </div>
@@ -190,6 +199,26 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                       {categories.map((cat) => (
                         <option key={cat.id} value={cat.id}>
                           {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Card */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Tarjeta (opcional)</label>
+                  <div className="relative">
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <select
+                      value={cardId}
+                      onChange={(e) => setCardId(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                    >
+                      <option value="">Sin tarjeta</option>
+                      {cards.filter(c => c.is_active).map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.name} - •••• {card.last_four}
                         </option>
                       ))}
                     </select>

@@ -1,42 +1,21 @@
 import { motion } from 'motion/react';
-import { ShoppingBag, Car, Home, Coffee, Heart, Smartphone, DollarSign, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Car, Home, Coffee, Heart, Smartphone, DollarSign, MoreHorizontal, ChevronRight, Utensils, Film, BookOpen, Briefcase, GraduationCap, Zap, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Transaction } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { useCards } from '../hooks/useCards';
 import { formatCurrency } from '../utils/currency';
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
   loading: boolean;
+  title?: string;
 }
 
-const categoryIcons: Record<string, any> = {
-  'Alimentación': ShoppingBag,
-  'Transporte': Car,
-  'Vivienda': Home,
-  'Entretenimiento': Coffee,
-  'Salud': Heart,
-  'Educación': Smartphone,
-  'Compras': Smartphone,
-  'Otros': MoreHorizontal,
-  'Ingreso': DollarSign,
-};
-
-const categoryColors: Record<string, string> = {
-  'Alimentación': 'from-blue-500 to-blue-600',
-  'Transporte': 'from-purple-500 to-purple-600',
-  'Vivienda': 'from-pink-500 to-pink-600',
-  'Entretenimiento': 'from-amber-500 to-amber-600',
-  'Salud': 'from-red-500 to-red-600',
-  'Educación': 'from-cyan-500 to-cyan-600',
-  'Compras': 'from-indigo-500 to-indigo-600',
-  'Otros': 'from-gray-500 to-gray-600',
-  'Ingreso': 'from-green-500 to-green-600',
-};
-
-export function RecentTransactions({ transactions: txs, loading }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions: txs, loading, title = 'Transacciones Recientes' }: RecentTransactionsProps) {
   const navigate = useNavigate();
   const { categories } = useCategories();
+  const { cards } = useCards();
 
   const recentTransactions = txs.slice(0, 5);
 
@@ -49,10 +28,27 @@ export function RecentTransactions({ transactions: txs, loading }: RecentTransac
         color: 'from-gray-500 to-gray-600',
       };
     }
+    // Use the icon from the category directly (Lucide icon name)
+    const getIconComponent = (iconName: string) => {
+      const icons: any = {
+        Utensils, Car, Home, Coffee, Heart, Smartphone, Film, BookOpen, ShoppingBag, DollarSign, Briefcase, GraduationCap, Zap,
+      };
+      return icons[iconName] || MoreHorizontal;
+    };
     return {
       name: category.name,
-      icon: categoryIcons[category.name] || MoreHorizontal,
-      color: categoryColors[category.name] || 'from-gray-500 to-gray-600',
+      icon: getIconComponent(category.icon),
+      color: category.color || 'from-gray-500 to-gray-600',
+    };
+  };
+
+  const getCardInfo = (cardId: string | null) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return null;
+    return {
+      name: card.name,
+      lastFour: card.last_four,
+      color: card.color,
     };
   };
 
@@ -75,7 +71,7 @@ export function RecentTransactions({ transactions: txs, loading }: RecentTransac
     return (
       <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/50 shadow-xl">
         <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h3 className="text-white text-base md:text-lg font-semibold">Transacciones Recientes</h3>
+          <h3 className="text-white text-base md:text-lg font-semibold">{title}</h3>
           <button 
             onClick={() => navigate('/transactions')}
             className="text-blue-400 hover:text-blue-300 text-xs md:text-sm font-medium flex items-center gap-1 transition-colors"
@@ -94,7 +90,7 @@ export function RecentTransactions({ transactions: txs, loading }: RecentTransac
   return (
     <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/50 shadow-xl">
       <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h3 className="text-white text-base md:text-lg font-semibold">Transacciones Recientes</h3>
+        <h3 className="text-white text-base md:text-lg font-semibold">{title}</h3>
         <button 
           onClick={() => navigate('/transactions')}
           className="text-blue-400 hover:text-blue-300 text-xs md:text-sm font-medium flex items-center gap-1 transition-colors"
@@ -106,6 +102,7 @@ export function RecentTransactions({ transactions: txs, loading }: RecentTransac
       <div className="space-y-2 md:space-y-3">
         {recentTransactions.map((transaction, index) => {
           const categoryInfo = getCategoryInfo(transaction.category_id);
+          const cardInfo = getCardInfo(transaction.card_id);
           const Icon = categoryInfo.icon;
           return (
             <motion.div
@@ -120,7 +117,18 @@ export function RecentTransactions({ transactions: txs, loading }: RecentTransac
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-medium text-sm md:text-base truncate">{transaction.description}</p>
-                <p className="text-slate-400 text-xs md:text-sm">{categoryInfo.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-slate-400 text-xs md:text-sm">{categoryInfo.name}</p>
+                  {cardInfo && (
+                    <>
+                      <span className="text-slate-600">•</span>
+                      <div className="flex items-center gap-1 text-slate-400 text-xs">
+                        <CreditCard className="w-3 h-3" />
+                        <span>{cardInfo.name} •••• {cardInfo.lastFour}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="text-right flex-shrink-0">
                 <p

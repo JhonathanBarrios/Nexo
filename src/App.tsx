@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from './store/authStore'
+import { useRealtimeNotifications } from './hooks/useRealtimeNotifications'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import DashboardPage from './pages/DashboardPage'
@@ -9,6 +10,7 @@ import TransactionsPage from './pages/TransactionsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
 import RecurringPaymentsPage from './pages/RecurringPaymentsPage'
+import CardsPage from './pages/CardsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -30,6 +32,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { initialize } = useAuthStore()
+  useRealtimeNotifications() // Listen for realtime notifications
 
   useEffect(() => {
     initialize()
@@ -44,6 +47,7 @@ export default function App() {
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/recurring-payments" element={<RecurringPaymentsPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/cards" element={<CardsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -12,6 +12,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>
   initialize: () => Promise<void>
   clearError: () => void
 }
@@ -63,6 +64,20 @@ export const useAuthStore = create<AuthState>()(
           const { error } = await supabase.auth.signOut()
           if (error) throw error
           set({ user: null, session: null, loading: false })
+        } catch (error: any) {
+          set({ error: error.message, loading: false })
+          throw error
+        }
+      },
+
+      updatePassword: async (newPassword: string) => {
+        set({ loading: true, error: null })
+        try {
+          const { error } = await supabase.auth.updateUser({
+            password: newPassword,
+          })
+          if (error) throw error
+          set({ loading: false })
         } catch (error: any) {
           set({ error: error.message, loading: false })
           throw error

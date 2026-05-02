@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLocation } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -18,9 +19,11 @@ import {
   Film,
   BookOpen,
   ShoppingBag,
+  CreditCard,
 } from 'lucide-react';
 import { useTransactions, type Transaction } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { useCards } from '../hooks/useCards';
 import { TransactionModal } from '../components/TransactionModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatCurrency } from '../utils/currency';
@@ -29,9 +32,12 @@ import toast from 'react-hot-toast';
 export default function TransactionsPage() {
   const { transactions, refetch, deleteTransaction } = useTransactions();
   const { categories } = useCategories();
+  const { cards } = useCards();
+  const location = useLocation();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [filterCard, setFilterCard] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -45,6 +51,13 @@ export default function TransactionsPage() {
     message: '',
   });
 
+  // Manejar filtro por tarjeta desde navegación
+  useEffect(() => {
+    if (location.state?.filterCardId) {
+      setFilterCard(location.state.filterCardId);
+    }
+  }, [location.state]);
+
   const categoryOptions = ['all', ...categories.map(c => c.name)];
 
   const getIconComponent = (iconName: string) => {
@@ -52,6 +65,16 @@ export default function TransactionsPage() {
       Utensils, Car, Home, Coffee, Heart, Smartphone, Film, BookOpen, ShoppingBag, DollarSign,
     };
     return icons[iconName] || DollarSign;
+  };
+
+  const getCardInfo = (cardId: string | null) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return null;
+    return {
+      name: card.name,
+      lastFour: card.last_four,
+      color: card.color,
+    };
   };
 
   const filteredTransactions = transactions
@@ -62,12 +85,13 @@ export default function TransactionsPage() {
                           categoryName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'all' || categoryName === filterCategory;
       const matchesType = filterType === 'all' || t.type === filterType;
+      const matchesCard = filterCard === 'all' || t.card_id === filterCard;
       
       const transactionDate = new Date(t.date);
       const matchesStartDate = !filterStartDate || transactionDate >= new Date(filterStartDate);
       const matchesEndDate = !filterEndDate || transactionDate <= new Date(filterEndDate);
       
-      return matchesSearch && matchesCategory && matchesType && matchesStartDate && matchesEndDate;
+      return matchesSearch && matchesCategory && matchesType && matchesCard && matchesStartDate && matchesEndDate;
     })
     .sort((a, b) => {
       switch (sortOrder) {
@@ -185,7 +209,7 @@ export default function TransactionsPage() {
       <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-800/50 mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {/* Search */}
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <input
@@ -195,6 +219,25 @@ export default function TransactionsPage() {
                 placeholder="Buscar transacciones..."
                 className="w-full pl-11 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
+            </div>
+          </div>
+
+          {/* Card Filter */}
+          <div>
+            <div className="relative">
+              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <select
+                value={filterCard}
+                onChange={(e) => setFilterCard(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              >
+                <option value="all">Todas las tarjetas</option>
+                {cards.map((card) => (
+                  <option key={card.id} value={card.id}>
+                    {card.name} (•••• {card.last_four})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -332,6 +375,7 @@ export default function TransactionsPage() {
               const Icon = getIconComponent(category?.icon || 'DollarSign');
               const color = category?.color || 'from-slate-500 to-slate-600';
               const categoryName = category?.name || 'Sin categoría';
+              const cardInfo = getCardInfo(transaction.card_id);
               
               return (
                 <motion.div
@@ -349,10 +393,19 @@ export default function TransactionsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate">{transaction.description}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-slate-400 text-sm truncate">{categoryName}</span>
                       <span className="text-slate-600 hidden sm:inline">•</span>
                       <span className="text-slate-400 text-sm hidden sm:inline">{transaction.date}</span>
+                      {cardInfo && (
+                        <>
+                          <span className="text-slate-600">•</span>
+                          <div className="flex items-center gap-1 text-slate-400 text-sm">
+                            <CreditCard className="w-3 h-3" />
+                            <span>{cardInfo.name} •••• {cardInfo.lastFour}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">

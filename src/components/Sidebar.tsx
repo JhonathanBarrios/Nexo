@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { LayoutDashboard, Wallet, Settings, CreditCard, PieChart, LogOut, Plus, X, Repeat } from 'lucide-react';
+import { CreditCard, LayoutDashboard, Wallet, Repeat, PieChart, Settings, LogOut, Plus, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 interface SidebarProps {
@@ -16,8 +16,8 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'transactions', label: 'Transacciones', icon: Wallet },
     { id: 'recurring-payments', label: 'Pagos Recurrentes', icon: Repeat },
-    { id: 'analytics', label: 'Análisis', icon: PieChart },
     { id: 'cards', label: 'Tarjetas', icon: CreditCard },
+    { id: 'analytics', label: 'Análisis', icon: PieChart },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];
 

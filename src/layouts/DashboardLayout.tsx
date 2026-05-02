@@ -1,5 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
+import { NotificationBanner } from '../components/NotificationBanner';
 import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 
@@ -11,6 +12,7 @@ export default function DashboardLayout() {
     const path = location.pathname;
     if (path === '/transactions') return 'transactions';
     if (path === '/recurring-payments') return 'recurring-payments';
+    if (path === '/cards') return 'cards';
     if (path === '/analytics') return 'analytics';
     if (path === '/settings') return 'settings';
     if (path === '/dashboard') return 'dashboard';
@@ -21,6 +23,7 @@ export default function DashboardLayout() {
     const path = location.pathname;
     if (path === '/transactions') setActiveTab('transactions');
     else if (path === '/recurring-payments') setActiveTab('recurring-payments');
+    else if (path === '/cards') setActiveTab('cards');
     else if (path === '/analytics') setActiveTab('analytics');
     else if (path === '/settings') setActiveTab('settings');
     else if (path === '/dashboard') setActiveTab('dashboard');
@@ -32,6 +35,8 @@ export default function DashboardLayout() {
       navigate('/transactions');
     } else if (tab === 'recurring-payments') {
       navigate('/recurring-payments');
+    } else if (tab === 'cards') {
+      navigate('/cards');
     } else if (tab === 'analytics') {
       navigate('/analytics');
     } else if (tab === 'settings') {
@@ -43,6 +48,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <NotificationBanner />
       <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} isOpen={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
       
       <div className="flex-1 flex flex-col min-w-0">
