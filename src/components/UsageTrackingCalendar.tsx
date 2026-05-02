@@ -138,20 +138,20 @@ export default function UsageTrackingCalendar({
   }
 
   return (
-    <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <CalendarIcon className="w-5 h-5 text-blue-400" />
-          <h3 className="text-white text-lg font-semibold">Tracking de Uso</h3>
+    <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-slate-800/50">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+          <h3 className="text-white text-base sm:text-lg font-semibold">Tracking de Uso</h3>
         </div>
-        <div className="bg-blue-500/20 rounded-xl px-4 py-2 border border-blue-500/30">
-          <p className="text-blue-400 text-sm font-medium">
+        <div className="bg-blue-500/20 rounded-xl px-2 sm:px-4 py-1 sm:py-2 border border-blue-500/30">
+          <p className="text-blue-400 text-xs sm:text-sm font-medium">
             Total: {formatCurrency(totalAmount)}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-6 gap-1 sm:gap-2">
         {dates.map((date) => {
           const dateString = date.toISOString().split('T')[0];
           const isTracked = trackedDays.has(dateString);
@@ -166,7 +166,7 @@ export default function UsageTrackingCalendar({
               onClick={() => handleDayClick(date)}
               disabled={isWeekendDay}
               className={`
-                relative aspect-square rounded-xl flex flex-col items-center justify-center p-2
+                relative aspect-square rounded-lg sm:rounded-xl flex flex-col items-center justify-center p-1 sm:p-2
                 transition-all cursor-pointer
                 ${isTracked
                   ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
@@ -177,10 +177,10 @@ export default function UsageTrackingCalendar({
               `}
               title={isWeekendDay ? 'Fin de semana' : isTracked ? `${formatCurrency(trackingData?.amount || 0)} - ${trackingData?.notes || 'Sin nota'}` : 'Click para agregar valor'}
             >
-              <span className="text-xs font-medium">{getDayName(date)}</span>
-              <span className="text-lg font-bold">{getDayNumber(date)}</span>
+              <span className="text-[10px] sm:text-xs font-medium">{getDayName(date)}</span>
+              <span className="text-sm sm:text-lg font-bold">{getDayNumber(date)}</span>
               {isTracked && (
-                <span className="text-xs font-medium mt-1">
+                <span className="text-[10px] sm:text-xs font-medium mt-0.5 sm:mt-1">
                   {formatCurrency(trackingData?.amount || 0).replace('COP', '').trim()}
                 </span>
               )}
@@ -188,9 +188,9 @@ export default function UsageTrackingCalendar({
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute top-1 right-1"
+                  className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1"
                 >
-                  <Check className="w-3 h-3 text-white" />
+                  <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                 </motion.div>
               )}
             </motion.button>
@@ -230,9 +230,9 @@ export default function UsageTrackingCalendar({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50 shadow-2xl w-full max-w-md">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-white text-xl font-semibold">
+              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-slate-800/50 shadow-2xl w-full max-w-md">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h3 className="text-white text-lg sm:text-xl font-semibold">
                     Valor para {selectedDate}
                   </h3>
                   <button onClick={() => setShowDayModal(false)} className="p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-800">

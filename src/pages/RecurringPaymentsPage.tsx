@@ -690,13 +690,13 @@ export default function RecurringPaymentsPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-slate-800/50 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <div>
-                    <h2 className="text-white text-xl font-semibold">
+                    <h2 className="text-white text-lg sm:text-xl font-semibold">
                       Tracking: {selectedPayment.description}
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <p className="text-slate-400 text-xs sm:text-sm mt-1">
                       Ingresa el valor para cada día marcado
                     </p>
                   </div>
