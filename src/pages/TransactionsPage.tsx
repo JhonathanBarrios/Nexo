@@ -20,6 +20,7 @@ import {
   BookOpen,
   ShoppingBag,
   CreditCard,
+  Calendar,
 } from 'lucide-react';
 import { useTransactions, type Transaction } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
@@ -28,6 +29,8 @@ import { TransactionModal } from '../components/TransactionModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatCurrency } from '../utils/currency';
 import toast from 'react-hot-toast';
+
+type DateFilter = 'today' | 'this_month' | 'last_month' | 'custom';
 
 export default function TransactionsPage() {
   const { transactions, refetch, deleteTransaction } = useTransactions();
@@ -39,8 +42,9 @@ export default function TransactionsPage() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCard, setFilterCard] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
@@ -50,6 +54,38 @@ export default function TransactionsPage() {
     title: '',
     message: '',
   });
+
+  // Filter transactions by date
+  const filterTransactionsByDate = (txs: typeof transactions) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return txs.filter(t => {
+      const transactionDate = new Date(t.date + 'T00:00:00');
+      
+      switch (dateFilter) {
+        case 'today':
+          return transactionDate.toDateString() === today.toDateString();
+        case 'this_month':
+          return transactionDate.getMonth() === now.getMonth() && 
+                 transactionDate.getFullYear() === now.getFullYear();
+        case 'last_month':
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+          return transactionDate >= lastMonth && transactionDate <= lastMonthEnd;
+        case 'custom':
+          if (!customStartDate || !customEndDate) return false;
+          const start = new Date(customStartDate + 'T00:00:00');
+          const end = new Date(customEndDate + 'T23:59:59');
+          return transactionDate >= start && transactionDate <= end;
+        default:
+          return true;
+      }
+    });
+  };
+
+  // Apply date filter to transactions first
+  const dateFilteredTransactions = filterTransactionsByDate(transactions);
 
   // Manejar filtro por tarjeta desde navegación
   useEffect(() => {
@@ -77,7 +113,7 @@ export default function TransactionsPage() {
     };
   };
 
-  const filteredTransactions = transactions
+  const filteredTransactions = dateFilteredTransactions
     .filter((t) => {
       const category = categories.find(c => c.id === t.category_id);
       const categoryName = category?.name || 'Sin categoría';
@@ -87,11 +123,7 @@ export default function TransactionsPage() {
       const matchesType = filterType === 'all' || t.type === filterType;
       const matchesCard = filterCard === 'all' || t.card_id === filterCard;
       
-      const transactionDate = new Date(t.date);
-      const matchesStartDate = !filterStartDate || transactionDate >= new Date(filterStartDate);
-      const matchesEndDate = !filterEndDate || transactionDate <= new Date(filterEndDate);
-      
-      return matchesSearch && matchesCategory && matchesType && matchesCard && matchesStartDate && matchesEndDate;
+      return matchesSearch && matchesCategory && matchesType && matchesCard;
     })
     .sort((a, b) => {
       switch (sortOrder) {
@@ -166,8 +198,8 @@ export default function TransactionsPage() {
             className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
           >
             <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Nueva Transacción</span>
-            <span className="sm:hidden">Nueva</span>
+            <span className="hidden md:inline">Nueva Transacción</span>
+            <span className="md:hidden">Nueva Transacción</span>
           </motion.button>
         </div>
 
@@ -306,35 +338,68 @@ export default function TransactionsPage() {
         </div>
 
         {/* Date Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Fecha Desde</label>
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            />
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4 border-t border-slate-800">
+          <div className="flex items-center gap-2 text-slate-400">
+            <Calendar className="w-5 h-5" />
+            <span className="font-medium">Filtrar por:</span>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Fecha Hasta</label>
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            />
-          </div>
-          <div className="flex items-end">
+          <div className="flex flex-wrap gap-2 flex-1">
             <button
-              onClick={() => {
-                setFilterStartDate('');
-                setFilterEndDate('');
-              }}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+              onClick={() => setDateFilter('today')}
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                dateFilter === 'today'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
             >
-              Limpiar Filtros
+              Hoy
             </button>
+            <button
+              onClick={() => setDateFilter('this_month')}
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                dateFilter === 'this_month'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Este Mes
+            </button>
+            <button
+              onClick={() => setDateFilter('last_month')}
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                dateFilter === 'last_month'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Mes Pasado
+            </button>
+            <button
+              onClick={() => setDateFilter('custom')}
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                dateFilter === 'custom'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Personalizado
+            </button>
+            {dateFilter === 'custom' && (
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                />
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                />
+              </div>
+            )}
           </div>
         </div>
 

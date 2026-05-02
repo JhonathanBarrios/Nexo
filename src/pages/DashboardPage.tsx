@@ -92,8 +92,8 @@ export default function DashboardPage() {
                 className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
               >
                 <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Nueva Transacción</span>
-                <span className="sm:hidden">Nueva</span>
+                <span className="hidden md:inline">Nueva Transacción</span>
+                <span className="md:hidden">Nueva Transacción</span>
               </motion.button>
             </div>
           </motion.div>

@@ -82,7 +82,7 @@ export function UpcomingPayments() {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-white font-bold">{formatCurrency(payment.amount).replace('COP', '').trim()}</p>
+                  <p className="text-white font-bold">{formatCurrency(payment.amount || 0).replace('COP', '').trim()}</p>
                   <p className={`text-xs ${
                     isOverdue
                       ? 'text-red-400'

@@ -62,7 +62,7 @@ export function PaymentAlerts() {
                 <p className={`text-sm ${
                   alert.status === 'overdue' ? 'text-red-300' : 'text-amber-300'
                 }`}>
-                  {formatCurrency(alert.payment.amount).replace('COP', '').trim()} • {alert.daysUntilDue === 0 ? 'Hoy' : alert.daysUntilDue === 1 ? 'Mañana' : `En ${alert.daysUntilDue} días`}
+                  {formatCurrency(alert.payment.amount || 0).replace('COP', '').trim()} • {alert.daysUntilDue === 0 ? 'Hoy' : alert.daysUntilDue === 1 ? 'Mañana' : `En ${alert.daysUntilDue} días`}
                 </p>
               </div>
             </div>

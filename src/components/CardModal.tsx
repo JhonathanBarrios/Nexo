@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface CardModalProps {
   isOpen: boolean;
@@ -80,19 +81,19 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
 
     // Validaciones
     if (!formData.name.trim()) {
-      alert('Por favor ingresa el nombre de la tarjeta');
+      toast.error('Por favor ingresa el nombre de la tarjeta');
       return;
     }
     if (!formData.bank) {
-      alert('Por favor selecciona el banco');
+      toast.error('Por favor selecciona el banco');
       return;
     }
     if (!formData.last_four || formData.last_four.length !== 4) {
-      alert('Por favor ingresa los últimos 4 dígitos de la tarjeta');
+      toast.error('Por favor ingresa los últimos 4 dígitos de la tarjeta');
       return;
     }
     if (formData.type === 'credit' && !formData.credit_limit) {
-      alert('Por favor ingresa el límite de crédito');
+      toast.error('Por favor ingresa el límite de crédito');
       return;
     }
 

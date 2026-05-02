@@ -51,7 +51,7 @@ export default function DashboardLayout() {
       <NotificationBanner />
       <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} isOpen={mobileMenuOpen} onOpenChange={setMobileMenuOpen} />
       
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
         {/* Header */}
         <header className="h-16 flex items-center px-4 lg:px-6 justify-between lg:justify-end bg-slate-900/80 backdrop-blur-xl border-b border-slate-800">
           <button

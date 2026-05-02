@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { CreditCard, LayoutDashboard, Wallet, Repeat, PieChart, Settings, LogOut, Plus, X } from 'lucide-react';
+import { CreditCard, LayoutDashboard, Wallet, Repeat, PieChart, Settings, LogOut, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 interface SidebarProps {
@@ -42,7 +42,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
       )}
 
       {/* Sidebar */}
-      <div className="hidden lg:block w-64 h-full bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto">
+      <div className="hidden lg:block w-64 h-screen bg-slate-900 border-r border-slate-800 flex flex-col fixed left-0 top-0">
         {/* Logo */}
         <div className="p-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -57,7 +57,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
         </div>
 
         {/* Menu Items */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -78,18 +78,6 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
             );
           })}
         </nav>
-
-        {/* Add Transaction Button */}
-        <div className="p-4 border-t border-slate-800">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Nueva Transacción
-          </motion.button>
-        </div>
 
         {/* User Section */}
         <div className="p-4 border-t border-slate-800">
@@ -138,7 +126,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
         </div>
 
         {/* Menu Items */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -162,18 +150,6 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
             );
           })}
         </nav>
-
-        {/* Add Transaction Button */}
-        <div className="p-4 border-t border-slate-800">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Nueva Transacción
-          </motion.button>
-        </div>
 
         {/* User Section */}
         <div className="p-4 border-t border-slate-800">

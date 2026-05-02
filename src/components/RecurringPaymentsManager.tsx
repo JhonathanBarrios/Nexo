@@ -34,6 +34,9 @@ export function RecurringPaymentsManager() {
         next_due_date: formData.next_due_date,
         custom_days: formData.frequency === 'custom' ? parseInt(formData.custom_days) : null,
         is_active: true,
+        is_variable: false,
+        pending_cycles: 0,
+        total_pending_amount: 0,
       })
       toast.success('Pago recurrente creado correctamente')
       setShowModal(false)

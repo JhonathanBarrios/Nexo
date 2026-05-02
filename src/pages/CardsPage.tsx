@@ -9,6 +9,7 @@ import CardModal from '../components/CardModal';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { formatCurrency } from '../utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import toast from 'react-hot-toast';
 
 export default function CardsPage() {
   const { cards, loading, createCard, updateCard, deleteCard } = useCards();
@@ -41,8 +42,9 @@ export default function CardsPage() {
     if (window.confirm('¿Estás seguro de eliminar esta tarjeta?')) {
       try {
         await deleteCard(id);
+        toast.success('Tarjeta eliminada correctamente');
       } catch (error: any) {
-        alert('Error al eliminar tarjeta: ' + error.message);
+        toast.error('Error al eliminar tarjeta: ' + error.message);
       }
     }
   };
@@ -55,12 +57,14 @@ export default function CardsPage() {
     try {
       if (editingCard) {
         await updateCard(editingCard.id, cardData);
+        toast.success('Tarjeta actualizada correctamente');
       } else {
         await createCard(cardData);
+        toast.success('Tarjeta creada correctamente');
       }
       setIsModalOpen(false);
     } catch (error: any) {
-      alert('Error al guardar tarjeta: ' + error.message);
+      toast.error('Error al guardar tarjeta: ' + error.message);
     }
   };
 
