@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from './store/authStore'
 import { useRealtimeNotifications } from './hooks/useRealtimeNotifications'
+import { usePWAUpdate } from './hooks/usePWAUpdate'
 import LoginPage from './pages/LoginPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import DashboardPage from './pages/DashboardPage'
@@ -11,6 +12,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
 import RecurringPaymentsPage from './pages/RecurringPaymentsPage'
 import CardsPage from './pages/CardsPage'
+import PWAUpdateBanner from './components/PWAUpdateBanner'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -33,10 +35,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { initialize } = useAuthStore()
   useRealtimeNotifications() // Listen for realtime notifications
+  const { updateAvailable, updateApp } = usePWAUpdate()
+  const [showBanner, setShowBanner] = useState(false)
 
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  useEffect(() => {
+    if (updateAvailable) {
+      setShowBanner(true)
+    }
+  }, [updateAvailable])
 
   return (
     <BrowserRouter>
@@ -74,6 +84,12 @@ export default function App() {
           },
         },
       }} />
+      {showBanner && (
+        <PWAUpdateBanner
+          onReload={updateApp}
+          onClose={() => setShowBanner(false)}
+        />
+      )}
     </BrowserRouter>
   )
 }
