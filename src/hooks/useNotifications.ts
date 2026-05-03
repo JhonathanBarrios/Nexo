@@ -34,9 +34,10 @@ export function useNotifications(userId: string | undefined) {
         .from('user_notifications')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
+        console.error('Error loading notification settings:', error);
         throw error;
       }
 
@@ -50,6 +51,7 @@ export function useNotifications(userId: string | undefined) {
           reminder_days_before: data.reminder_days_before ?? 3,
         });
       }
+      // Si no existe data, se usan los valores por defecto del estado inicial
     } catch (error) {
       console.error('Error loading notification settings:', error);
     } finally {
@@ -61,17 +63,28 @@ export function useNotifications(userId: string | undefined) {
     if (!userId) return;
 
     try {
-      // First try to update existing record
-      const { error: updateError } = await supabase
+      // Primero verificar si existe un registro
+      const { data: existingData } = await supabase
         .from('user_notifications')
-        .update({
-          ...newSettings,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      // If update fails (no record exists), insert new one
-      if (updateError) {
+      if (existingData) {
+        // Actualizar registro existente
+        const { error: updateError } = await supabase
+          .from('user_notifications')
+          .update({
+            ...newSettings,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingData.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+      } else {
+        // Insertar nuevo registro
         const { error: insertError } = await supabase
           .from('user_notifications')
           .insert({
@@ -79,7 +92,9 @@ export function useNotifications(userId: string | undefined) {
             ...settings,
             ...newSettings,
             updated_at: new Date().toISOString(),
-          });
+          })
+          .select()
+          .single();
 
         if (insertError) throw insertError;
       }
@@ -88,7 +103,7 @@ export function useNotifications(userId: string | undefined) {
       toast.success('Preferencias de notificación actualizadas');
     } catch (error: any) {
       console.error('Error updating notification settings:', error);
-      toast.error('Error al actualizar preferencias');
+      toast.error('Error al actualizar preferencias: ' + error.message);
       throw error;
     }
   };

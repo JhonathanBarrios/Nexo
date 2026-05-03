@@ -5,9 +5,11 @@ import { RecentTransactions } from '../components/RecentTransactions';
 import { TransactionModal } from '../components/TransactionModal';
 import { PaymentAlerts } from '../components/PaymentAlerts';
 import { UpcomingPayments } from '../components/UpcomingPayments';
-import { TrendingUp, TrendingDown, Wallet, DollarSign, Plus, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus, Calendar, PiggyBank, CreditCard } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTransactions } from '../hooks/useTransactions';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useSavingsAccounts } from '../hooks/useSavingsAccounts';
 import { useState } from 'react';
 import { Fragment } from 'react';
 import { formatCurrency } from '../utils/currency';
@@ -16,6 +18,8 @@ type DateFilter = 'today' | 'this_month' | 'last_month' | 'custom';
 
 export default function DashboardPage() {
   const { transactions, loading, refetch } = useTransactions();
+  const { getTotalSavings } = useSavingsAccounts();
+  const { getCurrentBudgetCycle } = useUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -25,6 +29,7 @@ export default function DashboardPage() {
   const filterTransactionsByDate = (txs: typeof transactions) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const budgetCycle = getCurrentBudgetCycle();
     
     return txs.filter(t => {
       const transactionDate = new Date(t.date + 'T00:00:00');
@@ -33,12 +38,15 @@ export default function DashboardPage() {
         case 'today':
           return transactionDate.toDateString() === today.toDateString();
         case 'this_month':
-          return transactionDate.getMonth() === now.getMonth() && 
-                 transactionDate.getFullYear() === now.getFullYear();
+          // Usar el ciclo de presupuesto personalizado
+          return transactionDate >= budgetCycle.start && transactionDate <= budgetCycle.end;
         case 'last_month':
-          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-          return transactionDate >= lastMonth && transactionDate <= lastMonthEnd;
+          // Ciclo anterior: restar 1 mes al inicio del ciclo actual
+          const lastMonthStart = new Date(budgetCycle.start);
+          lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+          const lastMonthEnd = new Date(budgetCycle.start);
+          lastMonthEnd.setDate(lastMonthEnd.getDate() - 1);
+          return transactionDate >= lastMonthStart && transactionDate <= lastMonthEnd;
         case 'custom':
           if (!customStartDate || !customEndDate) return false;
           const start = new Date(customStartDate + 'T00:00:00');
@@ -61,8 +69,11 @@ export default function DashboardPage() {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const balance = totalIncome - totalExpenses;
-  const savings = totalIncome - totalExpenses;
+  const totalCardPayments = filteredTransactions
+    .filter(t => t.type === 'payment')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const balance = totalIncome - totalExpenses - totalCardPayments;
 
   const recentTransactions = filteredTransactions.slice(0, 5);
 
@@ -172,7 +183,7 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
             <StatCard
               title="Balance Total"
               amount={formatCurrency(balance)}
@@ -198,12 +209,20 @@ export default function DashboardPage() {
               gradient="bg-gradient-to-br from-red-500 to-red-600"
             />
             <StatCard
-              title="Ahorros"
-              amount={formatCurrency(savings)}
+              title="Pagos TC"
+              amount={formatCurrency(totalCardPayments)}
+              change="0%"
+              trend="down"
+              icon={CreditCard}
+              gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+            />
+            <StatCard
+              title="Ahorro Total"
+              amount={formatCurrency(getTotalSavings())}
               change="0%"
               trend="up"
-              icon={DollarSign}
-              gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+              icon={PiggyBank}
+              gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
             />
           </div>
 

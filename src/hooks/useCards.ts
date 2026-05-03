@@ -14,6 +14,8 @@ export interface Card {
   color: string;
   icon: string;
   is_active: boolean;
+  current_balance: number;
+  current_debt: number;
   created_at: string;
   updated_at: string;
 }

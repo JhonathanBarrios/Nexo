@@ -133,10 +133,13 @@ export function RecentTransactions({ transactions: txs, loading, title = 'Transa
               <div className="text-right flex-shrink-0">
                 <p
                   className={`font-semibold text-sm md:text-base ${
-                    transaction.type === 'income' ? 'text-green-400' : 'text-white'
+                    transaction.type === 'income' ? 'text-green-400' : 
+                    transaction.type === 'expense' ? 'text-red-400' :
+                    transaction.type === 'payment' ? 'text-purple-400' :
+                    'text-white'
                   }`}
                 >
-                  {transaction.type === 'income' ? '+' : ''}{formatCurrency(Number(transaction.amount)).replace('COP', '').trim()}
+                  {transaction.type === 'income' ? '+' : transaction.type === 'expense' || transaction.type === 'payment' ? '-' : ''}{formatCurrency(Number(transaction.amount)).replace('COP', '').trim()}
                 </p>
                 <p className="text-slate-400 text-xs md:text-sm">{formatDate(transaction.date)}</p>
               </div>

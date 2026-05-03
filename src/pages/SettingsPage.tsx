@@ -1,29 +1,26 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Tag,
   Plus,
-  X,
   Edit2,
   Trash2,
-  Save,
-  User,
-  Bell,
-  Shield,
-  Calendar,
-  Monitor,
-  Smartphone,
-  Laptop,
-  LogOut,
+  DollarSign,
   Lock,
   Eye,
   EyeOff,
-  DollarSign,
+  Save,
+  X,
+  Calendar,
+  Bell,
+  Shield,
+  User,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useCategories, type Category } from '../hooks/useCategories';
 import { useAuthStore } from '../store/authStore';
 import { useNotifications } from '../hooks/useNotifications';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useUserSettings } from '../hooks/useUserSettings';
 import { supabase } from '../api/supabase';
 import toast from 'react-hot-toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -55,7 +52,6 @@ export default function SettingsPage() {
     currency: 'COP',
     dateFormat: 'DD/MM/YYYY',
     firstDayOfWeek: 'Monday',
-    savingsGoal: 0,
     photo: null,
   });
   const [passwordData, setPasswordData] = useState({
@@ -68,32 +64,11 @@ export default function SettingsPage() {
     new: false,
     confirm: false,
   });
-  const [activeSessions] = useState([
-    {
-      id: 1,
-      device: 'Chrome en Windows',
-      location: 'Bogotá, Colombia',
-      lastActive: 'Hace 5 minutos',
-      current: true,
-    },
-    {
-      id: 2,
-      device: 'Safari en iPhone',
-      location: 'Medellín, Colombia',
-      lastActive: 'Hace 2 horas',
-      current: false,
-    },
-    {
-      id: 3,
-      device: 'Firefox en macOS',
-      location: 'Cali, Colombia',
-      lastActive: 'Hace 1 día',
-      current: false,
-    },
-  ]);
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories();
   const { user, updatePassword } = useAuthStore();
   const { settings: notificationSettings, updateSettings: updateNotificationSettings } = useNotifications(user?.id);
+  const { profile, updateProfile } = useUserProfile();
+  const { settings: userSettings, updateSettings: updateUserSettings } = useUserSettings();
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({ name: '', icon: 'Tag', color: 'from-blue-500 to-blue-600', budget: '' });
@@ -109,17 +84,17 @@ export default function SettingsPage() {
       setProfileData({
         name: user.user_metadata?.name || '',
         email: user.email || '',
-        currency: 'COP',
-        dateFormat: 'DD/MM/YYYY',
-        firstDayOfWeek: 'Monday',
-        savingsGoal: 0,
+        currency: userSettings?.currency || 'COP',
+        dateFormat: userSettings?.date_format || 'DD/MM/YYYY',
+        firstDayOfWeek: userSettings?.first_day_of_week || 'Monday',
         photo: null,
       });
     }
-  }, [user]);
+  }, [user, userSettings]);
 
   const handleUpdateProfile = async () => {
     try {
+      // Actualizar nombre en Supabase Auth
       const { error } = await supabase.auth.updateUser({
         data: {
           name: profileData.name,
@@ -127,6 +102,13 @@ export default function SettingsPage() {
       });
       
       if (error) throw error;
+
+      // Actualizar configuraciones en user_settings
+      await updateUserSettings({
+        currency: profileData.currency,
+        date_format: profileData.dateFormat,
+        first_day_of_week: profileData.firstDayOfWeek,
+      });
       
       toast.success('Perfil actualizado correctamente');
     } catch (error: any) {
@@ -223,7 +205,7 @@ export default function SettingsPage() {
 
   const getIconComponent = (iconName: string) => {
     const Icon = (LucideIcons as any)[iconName];
-    return Icon ? <Icon className="w-5 h-5" /> : <Tag className="w-5 h-5" />;
+    return Icon ? <Icon className="w-5 h-5" /> : <LucideIcons.Tag className="w-5 h-5" />;
   };
 
   return (
@@ -252,7 +234,7 @@ export default function SettingsPage() {
                 : 'bg-slate-900/80 text-slate-400 hover:text-white'
             }`}
           >
-            <Tag className="w-3.5 h-3.5" />
+            <LucideIcons.Tag className="w-3.5 h-3.5" />
             Categorías
           </button>
           <button
@@ -300,7 +282,7 @@ export default function SettingsPage() {
                 : 'bg-slate-900/80 text-slate-400 hover:text-white'
             }`}
           >
-            <Tag className="w-5 h-5" />
+            <LucideIcons.Tag className="w-5 h-5" />
             Categorías
           </button>
           <button
@@ -497,21 +479,6 @@ export default function SettingsPage() {
                   <option value="Sunday">Domingo</option>
                 </select>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Meta de Ahorro Mensual
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                  <input
-                    type="number"
-                    value={profileData.savingsGoal}
-                    onChange={(e) => setProfileData({ ...profileData, savingsGoal: Number(e.target.value) })}
-                    className="w-full pl-8 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -665,6 +632,58 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Budget Cycle */}
+          <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-white text-xl font-semibold">Ciclo de Presupuesto</h2>
+                  <p className="text-slate-400 text-sm">Elige cuándo se reinicia tu presupuesto mensual</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-300 mb-3">
+                Día de reinicio del presupuesto
+              </label>
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => updateProfile({ budget_start_day: day })}
+                    className={`py-3 rounded-xl font-medium transition-all ${
+                      profile?.budget_start_day === day
+                        ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30'
+                        : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+                {Array.from({ length: 3 }, (_, i) => i + 29).map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => updateProfile({ budget_start_day: day })}
+                    className={`py-3 rounded-xl font-medium transition-all ${
+                      profile?.budget_start_day === day
+                        ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30'
+                        : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                El presupuesto se reinicia cada mes el día seleccionado. Por defecto es el día 1.
+              </p>
+            </div>
+          </div>
         </motion.div>
       )}
 
@@ -764,71 +783,6 @@ export default function SettingsPage() {
                 Actualizar Contraseña
               </motion.button>
             </form>
-          </div>
-
-          {/* Active Sessions */}
-          <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <Monitor className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-white text-xl font-semibold">Sesiones Activas</h2>
-                  <p className="text-slate-400 text-sm">Administra tus dispositivos conectados</p>
-                </div>
-              </div>
-              <button className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl font-medium hover:bg-red-500/30 transition-colors">
-                Cerrar Todas
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {activeSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={`flex items-center justify-between p-4 rounded-xl border ${
-                    session.current
-                      ? 'bg-green-500/10 border-green-500/30'
-                      : 'bg-slate-800/50 border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      session.current ? 'bg-green-500/20' : 'bg-slate-700'
-                    }`}>
-                      {session.device.includes('iPhone') || session.device.includes('Android') ? (
-                        <Smartphone className="w-6 h-6 text-white" />
-                      ) : session.device.includes('macOS') || session.device.includes('Windows') ? (
-                        <Laptop className="w-6 h-6 text-white" />
-                      ) : (
-                        <Monitor className="w-6 h-6 text-white" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{session.device}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-slate-400 text-sm">{session.location}</span>
-                        <span className="text-slate-600">•</span>
-                        <span className="text-slate-400 text-sm">{session.lastActive}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {session.current && (
-                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium">
-                        Actual
-                      </span>
-                    )}
-                    {!session.current && (
-                      <button className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
-                        <LogOut className="w-4 h-4 text-white" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </motion.div>
       )}

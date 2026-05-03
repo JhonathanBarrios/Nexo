@@ -16,6 +16,7 @@ export default function DashboardLayout() {
     if (path === '/analytics') return 'analytics';
     if (path === '/settings') return 'settings';
     if (path === '/dashboard') return 'dashboard';
+    if (path === '/savings') return 'savings';
     return 'dashboard';
   });
 
@@ -27,6 +28,7 @@ export default function DashboardLayout() {
     else if (path === '/analytics') setActiveTab('analytics');
     else if (path === '/settings') setActiveTab('settings');
     else if (path === '/dashboard') setActiveTab('dashboard');
+    else if (path === '/savings') setActiveTab('savings');
   }, [location.pathname]);
 
   const handleTabChange = (tab: string) => {
@@ -43,6 +45,8 @@ export default function DashboardLayout() {
       navigate('/settings');
     } else if (tab === 'dashboard') {
       navigate('/dashboard');
+    } else if (tab === 'savings') {
+      navigate('/savings');
     }
   };
 

@@ -9,6 +9,7 @@ import {
   ArrowUpDown,
   Edit2,
   Trash2,
+  MoreVertical,
   DollarSign,
   Utensils,
   Car,
@@ -41,7 +42,7 @@ export default function TransactionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCard, setFilterCard] = useState('all');
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'savings'>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -54,6 +55,19 @@ export default function TransactionsPage() {
     title: '',
     message: '',
   });
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenMenuId(null);
+    };
+
+    if (openMenuId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openMenuId]);
 
   // Filter transactions by date
   const filterTransactionsByDate = (txs: typeof transactions) => {
@@ -324,6 +338,16 @@ export default function TransactionsPage() {
               >
                 Gastos
               </button>
+              <button
+                onClick={() => setFilterType('savings')}
+                className={`flex-1 py-3 rounded-xl font-medium transition-all text-sm ${
+                  filterType === 'savings'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-slate-800/50 text-slate-400 hover:text-white'
+                }`}
+              >
+                Ahorro
+              </button>
             </div>
             <select
               value={filterType}
@@ -333,6 +357,7 @@ export default function TransactionsPage() {
               <option value="all">Todas</option>
               <option value="income">Ingresos</option>
               <option value="expense">Gastos</option>
+              <option value="savings">Ahorro</option>
             </select>
           </div>
         </div>
@@ -476,45 +501,105 @@ export default function TransactionsPage() {
                   <div className="text-right flex-shrink-0">
                     <p
                       className={`text-lg lg:text-xl font-bold ${
-                        transaction.type === 'income' ? 'text-green-400' : 'text-white'
+                        transaction.type === 'income' ? 'text-green-400' : 
+                        transaction.type === 'expense' ? 'text-red-400' :
+                        transaction.type === 'payment' ? 'text-purple-400' :
+                        transaction.type === 'savings' ? 'text-emerald-400' :
+                        'text-white'
                       }`}
                     >
-                      {transaction.type === 'income' ? '+' : '-'}
+                      {transaction.type === 'income' ? '+' : transaction.type === 'expense' || transaction.type === 'payment' ? '-' : transaction.type === 'savings' ? '' : ''}
                       {formatCurrency(Math.abs(Number(transaction.amount))).replace('COP', '').trim()}
                     </p>
                     <span
                       className={`inline-block px-2 py-1 rounded-lg text-xs font-medium ${
                         transaction.type === 'income'
                           ? 'bg-green-500/20 text-green-400'
+                          : transaction.type === 'savings'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : transaction.type === 'payment'
+                          ? 'bg-purple-500/20 text-purple-400'
                           : 'bg-red-500/20 text-red-400'
                       }`}
                     >
-                      {transaction.type === 'income' ? 'Ingreso' : 'Gasto'}
+                      {transaction.type === 'income' ? 'Ingreso' : transaction.type === 'savings' ? 'Ahorro' : transaction.type === 'payment' ? 'Pago TC' : 'Gasto'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(transaction);
-                      }}
-                      className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4 text-blue-400" />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(transaction);
-                      }}
-                      className="p-2 bg-red-500/20 rounded-lg hover:bg-red-500/30 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </motion.button>
+                    {/* Desktop: botones individuales */}
+                    <div className="hidden sm:flex items-center gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(transaction);
+                        }}
+                        className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4 text-blue-400" />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(transaction);
+                        }}
+                        className="p-2 bg-red-500/20 rounded-lg hover:bg-red-500/30 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </motion.button>
+                    </div>
+                    
+                    {/* Mobile: menú de 3 puntos */}
+                    <div className="relative sm:hidden">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === transaction.id ? null : transaction.id);
+                        }}
+                        className="p-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4 text-slate-400" />
+                      </motion.button>
+                      
+                      <AnimatePresence>
+                        {openMenuId === transaction.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="absolute right-0 top-full mt-2 w-32 bg-slate-800 rounded-xl border border-slate-700 shadow-xl z-50"
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                handleEdit(transaction);
+                              }}
+                              className="w-full px-4 py-3 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-t-xl flex items-center gap-2 transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                              Editar
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                handleDelete(transaction);
+                              }}
+                              className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 rounded-b-xl flex items-center gap-2 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Eliminar
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </motion.div>
               );

@@ -36,13 +36,18 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
   ];
 
   const banks = [
+    'Banco AV Villas',
+    'Banco de Bogotá',
+    'Banco de Occidente',
+    'Banco Falabella',
+    'Banco Popular',
     'Bancolombia',
-    'Nequi',
-    'Lulo',
-    'Davivienda',
     'BBVA',
-    'Scotiabank',
-    'PSE',
+    'Daviplata',
+    'Davivienda',
+    'Lulo',
+    'Nequi',
+    'Nu',
     'Otro',
   ];
 

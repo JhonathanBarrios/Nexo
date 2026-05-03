@@ -15,11 +15,12 @@ interface TransactionModalProps {
 }
 
 export function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction }: TransactionModalProps) {
-  const [type, setType] = useState<'income' | 'expense'>('expense')
+  const [type, setType] = useState<'income' | 'expense' | 'payment'>('expense')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [cardId, setCardId] = useState('')
+  const [sourceCardId, setSourceCardId] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
   
@@ -35,6 +36,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         setAmount(editingTransaction.amount.toString())
         setCategoryId(editingTransaction.category_id || '')
         setCardId(editingTransaction.card_id || '')
+        setSourceCardId(editingTransaction.source_card_id || '')
         setDate(editingTransaction.date)
         setType(editingTransaction.type)
       } else {
@@ -42,6 +44,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         setAmount('')
         setCategoryId('')
         setCardId('')
+        setSourceCardId('')
         setDate(new Date().toISOString().split('T')[0])
         setType('expense')
       }
@@ -63,6 +66,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         await updateTransaction(editingTransaction.id, {
           category_id: categoryId || null,
           card_id: cardId || null,
+          source_card_id: sourceCardId || null,
           description,
           amount: parseFloat(amount),
           type,
@@ -75,6 +79,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
           user_id: user.id,
           category_id: categoryId || null,
           card_id: cardId || null,
+          source_card_id: sourceCardId || null,
           description,
           amount: parseFloat(amount),
           type,
@@ -150,6 +155,18 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                     <Plus className="w-5 h-5" />
                     Ingreso
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setType('payment')}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                      type === 'payment'
+                        ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30'
+                        : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    Pago TC
+                  </button>
                 </div>
 
                 {/* Description */}
@@ -224,6 +241,32 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                     </select>
                   </div>
                 </div>
+
+                {/* Source Card - Solo para pagos */}
+                {type === 'payment' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Tarjeta origen (requerido)
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <select
+                        value={sourceCardId}
+                        onChange={(e) => setSourceCardId(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                        required
+                      >
+                        <option value="">Seleccionar tarjeta origen</option>
+                        {cards.filter(c => c.is_active && (c.type === 'debit' || c.type === 'prepaid')).map((card) => (
+                          <option key={card.id} value={card.id}>
+                            {card.name} - •••• {card.last_four}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-slate-400 text-xs mt-1">De dónde sale el dinero (solo débito/prepago)</p>
+                  </div>
+                )}
 
                 {/* Date */}
                 <div>

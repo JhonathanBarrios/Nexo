@@ -6,9 +6,10 @@ export interface Transaction {
   user_id: string
   category_id: string | null
   card_id: string | null
+  source_card_id: string | null
   description: string
   amount: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'savings' | 'payment'
   date: string
   notes: string | null
   created_at: string

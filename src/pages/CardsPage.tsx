@@ -237,6 +237,25 @@ export default function CardsPage() {
                         {card.last_four.padStart(16, '•').replace(/(.{4})/g, '$1 ').trim()}
                       </div>
 
+                      <div className="mt-4 relative z-10">
+                        {card.type === 'credit' ? (
+                          <div>
+                            <p className="text-white/60 text-[10px] uppercase tracking-wider">Deuda Actual</p>
+                            <p className="text-lg md:text-xl font-bold">{formatCurrency(card.current_debt)}</p>
+                            {card.credit_limit && (
+                              <p className="text-white/40 text-xs mt-1">
+                                Límite: {formatCurrency(card.credit_limit)}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-white/60 text-[10px] uppercase tracking-wider">Saldo Actual</p>
+                            <p className="text-lg md:text-xl font-bold">{formatCurrency(card.current_balance)}</p>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex justify-between items-end mt-4 relative z-10">
                         <div className="text-sm md:text-base opacity-80 uppercase tracking-wide">
                           {card.bank}
@@ -275,7 +294,7 @@ export default function CardsPage() {
                 {(() => {
                   const stats = calculateCardStats(cards[cardIndex].id);
                   const usagePercentage = cards[cardIndex].type === 'credit' && cards[cardIndex].credit_limit
-                    ? (stats.totalSpent / Number(cards[cardIndex].credit_limit)) * 100
+                    ? (cards[cardIndex].current_debt / Number(cards[cardIndex].credit_limit)) * 100
                     : 0;
 
                   return (
