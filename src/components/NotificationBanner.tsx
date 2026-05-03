@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, AlertTriangle, Info } from 'lucide-react';
 import { useRealtimeNotifications } from '../hooks/useRealtimeNotifications';
+import { formatCurrency } from '../utils/currency';
 
 export function NotificationBanner() {
   const { notification } = useRealtimeNotifications();
@@ -16,21 +17,21 @@ export function NotificationBanner() {
           color: 'from-yellow-500 to-orange-500',
           icon: AlertTriangle,
           title: 'Alerta de Presupuesto - 50%',
-          message: `Has gastado el ${percentage.toFixed(0)}% de tu presupuesto ($${spent.toFixed(2)} de $${budget.toFixed(2)})`,
+          message: `Has gastado el ${percentage.toFixed(0)}% de tu presupuesto (${formatCurrency(spent)} de ${formatCurrency(budget)})`,
         };
       case 80:
         return {
           color: 'from-orange-500 to-red-500',
           icon: AlertTriangle,
           title: 'Alerta de Presupuesto - 80%',
-          message: `Estás cerca del límite: ${percentage.toFixed(0)}% gastado ($${spent.toFixed(2)} de $${budget.toFixed(2)})`,
+          message: `Estás cerca del límite: ${percentage.toFixed(0)}% gastado (${formatCurrency(spent)} de ${formatCurrency(budget)})`,
         };
       case 100:
         return {
           color: 'from-red-500 to-red-600',
           icon: X,
           title: '¡Presupuesto Excedido!',
-          message: `Has excedido tu presupuesto: ${percentage.toFixed(0)}% gastado ($${spent.toFixed(2)} de $${budget.toFixed(2)})`,
+          message: `Has excedido tu presupuesto: ${percentage.toFixed(0)}% gastado (${formatCurrency(spent)} de ${formatCurrency(budget)})`,
         };
       default:
         return {

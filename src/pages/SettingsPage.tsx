@@ -24,6 +24,7 @@ import { useUserSettings } from '../hooks/useUserSettings';
 import { supabase } from '../api/supabase';
 import toast from 'react-hot-toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { formatCurrency } from '../utils/currency';
 
 const colorOptions = [
   'from-blue-500 to-blue-600',
@@ -369,7 +370,7 @@ export default function SettingsPage() {
                 </div>
                 <h3 className="text-white font-semibold mb-1">{category.name}</h3>
                 {category.budget_monthly && (
-                  <p className="text-slate-400 text-sm">Presupuesto: ${category.budget_monthly}</p>
+                  <p className="text-slate-400 text-sm">Presupuesto: {formatCurrency(category.budget_monthly)}</p>
                 )}
               </motion.div>
             ))}

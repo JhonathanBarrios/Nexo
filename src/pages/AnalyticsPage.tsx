@@ -18,6 +18,7 @@ import {
   Radar,
 } from 'recharts';
 import { TrendingUp, Calendar, Target, AlertCircle, CheckCircle } from 'lucide-react';
+import { formatCurrency } from '../utils/currency';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
 
@@ -790,7 +791,7 @@ export default function AnalyticsPage() {
                   <div className="flex-1">
                     <p className="text-white font-medium">{alert.category}</p>
                     <p className="text-slate-400 text-sm">
-                      Has gastado ${alert.spent} de ${alert.budget} presupuestados ({alert.percentage}%)
+                      Has gastado {formatCurrency(alert.spent)} de {formatCurrency(alert.budget)} presupuestados ({alert.percentage}%)
                     </p>
                   </div>
                   <div className="text-right">

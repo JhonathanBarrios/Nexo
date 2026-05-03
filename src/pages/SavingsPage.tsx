@@ -420,7 +420,7 @@ export default function SavingsPage() {
                         <p className="text-slate-500 text-xs">
                           Promedio: {deposits.get(account.id)?.length
                             ? formatCurrency(account.current_balance / deposits.get(account.id)!.length)
-                            : '$0'}
+                            : formatCurrency(0)}
                         </p>
                       </div>
                     )}
