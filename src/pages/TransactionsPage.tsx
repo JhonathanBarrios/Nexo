@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 import {
-  Search,
   Filter,
   Download,
   Plus,
@@ -22,8 +21,10 @@ import {
   ShoppingBag,
   CreditCard,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import { useTransactions, type Transaction } from '../hooks/useTransactions';
+import { useTransactions, type Transaction, type TransactionsFilters } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { useCards } from '../hooks/useCards';
 import { TransactionModal } from '../components/TransactionModal';
@@ -34,15 +35,13 @@ import toast from 'react-hot-toast';
 type DateFilter = 'today' | 'this_month' | 'last_month' | 'custom';
 
 export default function TransactionsPage() {
-  const { transactions, refetch, deleteTransaction } = useTransactions();
   const { categories } = useCategories();
   const { cards } = useCards();
   const location = useLocation();
-  
-  const [searchTerm, setSearchTerm] = useState('');
+
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCard, setFilterCard] = useState('all');
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'savings'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'payment' | 'withdrawal' | 'savings'>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -56,6 +55,79 @@ export default function TransactionsPage() {
     message: '',
   });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  // Calcular fechas para los filtros
+  const getDateRange = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (dateFilter) {
+      case 'today':
+        return {
+          startDate: today.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0],
+        };
+      case 'this_month':
+        return {
+          startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+          endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
+        };
+      case 'last_month':
+        return {
+          startDate: new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0],
+          endDate: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0],
+        };
+      case 'custom':
+        return {
+          startDate: customStartDate,
+          endDate: customEndDate,
+        };
+      default:
+        return { startDate: undefined, endDate: undefined };
+    }
+  };
+
+  const { startDate, endDate } = getDateRange();
+
+  // Mapear sortOrder a sortBy y sortOrder para el hook
+  const getSortConfig = () => {
+    switch (sortOrder) {
+      case 'newest':
+        return { sortBy: 'date' as const, sortOrder: 'desc' as const };
+      case 'oldest':
+        return { sortBy: 'date' as const, sortOrder: 'asc' as const };
+      case 'highest':
+        return { sortBy: 'amount' as const, sortOrder: 'desc' as const };
+      case 'lowest':
+        return { sortBy: 'amount' as const, sortOrder: 'asc' as const };
+      default:
+        return { sortBy: 'date' as const, sortOrder: 'desc' as const };
+    }
+  };
+
+  const { sortBy, sortOrder: sortDirection } = getSortConfig();
+
+  // Construir filtros para el hook
+  const filters: TransactionsFilters = {
+    startDate,
+    endDate,
+    categoryId: filterCategory === 'all' ? undefined : categories.find(c => c.name === filterCategory)?.id,
+    cardId: filterCard === 'all' ? undefined : filterCard,
+    type: filterType === 'all' ? undefined : filterType,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder: sortDirection,
+  };
+
+  const { transactions, refetch, deleteTransaction, totalCount, loading } = useTransactions(filters);
+
+  // Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setPage(1);
+  }, [dateFilter, filterCategory, filterCard, filterType, sortOrder]);
 
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
@@ -68,38 +140,6 @@ export default function TransactionsPage() {
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [openMenuId]);
-
-  // Filter transactions by date
-  const filterTransactionsByDate = (txs: typeof transactions) => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    return txs.filter(t => {
-      const transactionDate = new Date(t.date + 'T00:00:00');
-      
-      switch (dateFilter) {
-        case 'today':
-          return transactionDate.toDateString() === today.toDateString();
-        case 'this_month':
-          return transactionDate.getMonth() === now.getMonth() && 
-                 transactionDate.getFullYear() === now.getFullYear();
-        case 'last_month':
-          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-          return transactionDate >= lastMonth && transactionDate <= lastMonthEnd;
-        case 'custom':
-          if (!customStartDate || !customEndDate) return false;
-          const start = new Date(customStartDate + 'T00:00:00');
-          const end = new Date(customEndDate + 'T23:59:59');
-          return transactionDate >= start && transactionDate <= end;
-        default:
-          return true;
-      }
-    });
-  };
-
-  // Apply date filter to transactions first
-  const dateFilteredTransactions = filterTransactionsByDate(transactions);
 
   // Manejar filtro por tarjeta desde navegación
   useEffect(() => {
@@ -127,41 +167,6 @@ export default function TransactionsPage() {
     };
   };
 
-  const filteredTransactions = dateFilteredTransactions
-    .filter((t) => {
-      const category = categories.find(c => c.id === t.category_id);
-      const categoryName = category?.name || 'Sin categoría';
-      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          categoryName.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = filterCategory === 'all' || categoryName === filterCategory;
-      const matchesType = filterType === 'all' || t.type === filterType;
-      const matchesCard = filterCard === 'all' || t.card_id === filterCard;
-      
-      return matchesSearch && matchesCategory && matchesType && matchesCard;
-    })
-    .sort((a, b) => {
-      switch (sortOrder) {
-        case 'newest':
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        case 'oldest':
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
-        case 'highest':
-          return Math.abs(Number(b.amount)) - Math.abs(Number(a.amount));
-        case 'lowest':
-          return Math.abs(Number(a.amount)) - Math.abs(Number(b.amount));
-        default:
-          return 0;
-      }
-    });
-
-  const totalIncome = filteredTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const totalExpense = filteredTransactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
-
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setShowModal(true);
@@ -176,7 +181,7 @@ export default function TransactionsPage() {
         refetch();
       },
       title: 'Eliminar Transacción',
-      message: `¿Estás seguro de eliminar la transacción "${transaction.description}"? Esta acción no se puede deshacer.`,
+      message: '¿Estás seguro de eliminar esta transacción? Esta acción no se puede deshacer.',
     });
   };
 
@@ -186,7 +191,8 @@ export default function TransactionsPage() {
   };
 
   const handleModalSuccess = () => {
-    handleModalClose();
+    setShowModal(false);
+    setEditingTransaction(null);
     refetch();
   };
 
@@ -217,57 +223,11 @@ export default function TransactionsPage() {
           </motion.button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4 }}
-            className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/50"
-          >
-            <p className="text-slate-400 text-sm mb-1">Total Ingresos</p>
-            <p className="text-green-400 text-xl md:text-2xl font-bold">{formatCurrency(totalIncome)}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4 }}
-            className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/50"
-          >
-            <p className="text-slate-400 text-sm mb-1">Total Gastos</p>
-            <p className="text-red-400 text-xl md:text-2xl font-bold">{formatCurrency(totalExpense)}</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4 }}
-            className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/50"
-          >
-            <p className="text-slate-400 text-sm mb-1">Balance Neto</p>
-            <p className={`text-xl md:text-2xl font-bold ${totalIncome - totalExpense >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {formatCurrency(totalIncome - totalExpense)}
-            </p>
-          </motion.div>
-        </div>
       </motion.div>
 
-      {/* Filters and Search */}
+      {/* Filters */}
       <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-800/50 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          {/* Search */}
-          <div className="sm:col-span-2 lg:col-span-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar transacciones..."
-                className="w-full pl-11 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           {/* Card Filter */}
           <div>
             <div className="relative">
@@ -339,6 +299,26 @@ export default function TransactionsPage() {
                 Gastos
               </button>
               <button
+                onClick={() => setFilterType('payment')}
+                className={`flex-1 py-3 rounded-xl font-medium transition-all text-sm ${
+                  filterType === 'payment'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-slate-800/50 text-slate-400 hover:text-white'
+                }`}
+              >
+                Pago TC
+              </button>
+              <button
+                onClick={() => setFilterType('withdrawal')}
+                className={`flex-1 py-3 rounded-xl font-medium transition-all text-sm ${
+                  filterType === 'withdrawal'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-slate-800/50 text-slate-400 hover:text-white'
+                }`}
+              >
+                Retiro
+              </button>
+              <button
                 onClick={() => setFilterType('savings')}
                 className={`flex-1 py-3 rounded-xl font-medium transition-all text-sm ${
                   filterType === 'savings'
@@ -357,6 +337,8 @@ export default function TransactionsPage() {
               <option value="all">Todas</option>
               <option value="income">Ingresos</option>
               <option value="expense">Gastos</option>
+              <option value="payment">Pago TC</option>
+              <option value="withdrawal">Retiro</option>
               <option value="savings">Ahorro</option>
             </select>
           </div>
@@ -454,13 +436,18 @@ export default function TransactionsPage() {
       <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-800/50">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-white text-lg font-semibold">
-            {filteredTransactions.length} Transacciones
+            {loading ? 'Cargando...' : `${totalCount} Transacciones`}
           </h3>
         </div>
 
         <div className="space-y-3">
-          <AnimatePresence>
-            {filteredTransactions.map((transaction, index) => {
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-slate-400 text-lg">Cargando transacciones...</p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {transactions.map((transaction, index) => {
               const category = categories.find(c => c.id === transaction.category_id);
               const Icon = getIconComponent(category?.icon || 'DollarSign');
               const color = category?.color || 'from-slate-500 to-slate-600';
@@ -605,8 +592,9 @@ export default function TransactionsPage() {
               );
             })}
           </AnimatePresence>
+          )}
 
-          {filteredTransactions.length === 0 && (
+          {!loading && transactions.length === 0 && (
             <div className="text-center py-12">
               <p className="text-slate-400 text-lg">No se encontraron transacciones</p>
               <p className="text-slate-500 text-sm mt-2">
@@ -615,6 +603,36 @@ export default function TransactionsPage() {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {!loading && totalCount > pageSize && (
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-800">
+            <p className="text-slate-400 text-sm">
+              Mostrando {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, totalCount)} de {totalCount}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center gap-1 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Anterior</span>
+              </button>
+              <span className="text-slate-400 text-sm">
+                Página {page} de {Math.ceil(totalCount / pageSize)}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(Math.ceil(totalCount / pageSize), p + 1))}
+                disabled={page >= Math.ceil(totalCount / pageSize)}
+                className="flex items-center gap-1 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Transaction Modal */}

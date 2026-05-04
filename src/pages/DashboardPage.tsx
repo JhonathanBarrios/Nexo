@@ -7,17 +7,18 @@ import { PaymentAlerts } from '../components/PaymentAlerts';
 import { UpcomingPayments } from '../components/UpcomingPayments';
 import { TrendingUp, TrendingDown, Wallet, Plus, Calendar, PiggyBank, CreditCard } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useTransactions } from '../hooks/useTransactions';
+import { useTransactions, type TransactionsFilters } from '../hooks/useTransactions';
 import { useSavingsAccounts } from '../hooks/useSavingsAccounts';
-import { useState } from 'react';
+import { useAuthStore } from '../store/authStore';
+import { useState, useEffect } from 'react';
 import { Fragment } from 'react';
 import { formatCurrency } from '../utils/currency';
 
 type DateFilter = 'today' | 'this_month' | 'last_month' | 'custom';
 
 export default function DashboardPage() {
-  const { transactions, loading, refetch } = useTransactions();
   const { getTotalSavings } = useSavingsAccounts();
+  const { user } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -46,57 +47,79 @@ export default function DashboardPage() {
     return { start: startDate, end: endDate };
   };
 
-  // Filter transactions by date
-  const filterTransactionsByDate = (txs: typeof transactions) => {
+  // Calcular rango de fechas basado en dateFilter
+  const getDateRange = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const budgetCycle = getCurrentBudgetCycle();
-    
-    return txs.filter(t => {
-      const transactionDate = new Date(t.date + 'T00:00:00');
-      
-      switch (dateFilter) {
-        case 'today':
-          return transactionDate.toDateString() === today.toDateString();
-        case 'this_month':
-          // Usar el ciclo de presupuesto personalizado
-          return transactionDate >= budgetCycle.start && transactionDate <= budgetCycle.end;
-        case 'last_month':
-          // Ciclo anterior: restar 1 mes al inicio del ciclo actual
-          const lastMonthStart = new Date(budgetCycle.start);
-          lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
-          const lastMonthEnd = new Date(budgetCycle.start);
-          lastMonthEnd.setDate(lastMonthEnd.getDate() - 1);
-          return transactionDate >= lastMonthStart && transactionDate <= lastMonthEnd;
-        case 'custom':
-          if (!customStartDate || !customEndDate) return false;
-          const start = new Date(customStartDate + 'T00:00:00');
-          const end = new Date(customEndDate + 'T23:59:59');
-          return transactionDate >= start && transactionDate <= end;
-        default:
-          return true;
-      }
-    });
+
+    switch (dateFilter) {
+      case 'today':
+        return {
+          startDate: today.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0],
+        };
+      case 'this_month':
+        return {
+          startDate: budgetCycle.start.toISOString().split('T')[0],
+          endDate: budgetCycle.end.toISOString().split('T')[0],
+        };
+      case 'last_month':
+        const lastMonthStart = new Date(budgetCycle.start);
+        lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+        const lastMonthEnd = new Date(budgetCycle.start);
+        lastMonthEnd.setDate(lastMonthEnd.getDate() - 1);
+        return {
+          startDate: lastMonthStart.toISOString().split('T')[0],
+          endDate: lastMonthEnd.toISOString().split('T')[0],
+        };
+      case 'custom':
+        return {
+          startDate: customStartDate,
+          endDate: customEndDate,
+        };
+      default:
+        return {
+          startDate: budgetCycle.start.toISOString().split('T')[0],
+          endDate: budgetCycle.end.toISOString().split('T')[0],
+        };
+    }
   };
 
-  const filteredTransactions = filterTransactionsByDate(transactions);
+  const { startDate, endDate } = getDateRange();
 
-  // Calcular estadísticas
-  const totalIncome = filteredTransactions
+  // Filtros dinámicos para el hook
+  const filters: TransactionsFilters = {
+    startDate,
+    endDate,
+    page: 1,
+    pageSize: 100,
+    sortBy: 'date',
+    sortOrder: 'desc',
+  };
+  const { transactions, loading, refetch } = useTransactions(filters);
+
+  // Refetch cuando cambian los filtros de fecha
+  useEffect(() => {
+    refetch();
+  }, [dateFilter, customStartDate, customEndDate]);
+
+  // Calcular estadísticas (usar transactions directamente, sin filtrado local)
+  const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const totalExpenses = filteredTransactions
+  const totalExpenses = transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const totalCardPayments = filteredTransactions
+  const totalCardPayments = transactions
     .filter(t => t.type === 'payment')
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const balance = totalIncome - totalExpenses - totalCardPayments;
 
-  const recentTransactions = filteredTransactions.slice(0, 5);
+  const recentTransactions = transactions.slice(0, 5);
 
   return (
     <Fragment>
@@ -111,7 +134,10 @@ export default function DashboardPage() {
             className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4"
           >
             <div>
-              <h1 className="text-white text-2xl md:text-3xl font-bold mb-2">Dashboard Financiero</h1>
+              <h1 className="text-white text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
+                <span className="text-4xl">👋</span>
+                Hola, {user?.user_metadata?.name || 'Usuario'}
+              </h1>
               <p className="text-slate-400 text-sm md:text-base">
                 {loading ? 'Cargando...' : 'Resumen de tus finanzas personales'}
               </p>
@@ -250,10 +276,10 @@ export default function DashboardPage() {
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
             <div>
-              <ExpenseChart transactions={filteredTransactions} />
+              <ExpenseChart transactions={transactions} />
             </div>
             <div>
-              <CategoryBreakdown transactions={filteredTransactions} />
+              <CategoryBreakdown transactions={transactions} />
             </div>
           </div>
 

@@ -172,14 +172,14 @@ export default function SavingsDepositModal({
                     required
                   >
                     <option value="">Seleccionar tarjeta</option>
-                    {cards.filter(c => c.is_active && (c.type === 'debit' || c.type === 'prepaid')).map((card) => (
+                    {cards.filter(c => c.is_active && (c.type === 'debit' || c.type === 'cash')).map((card) => (
                       <option key={card.id} value={card.id}>
                         {card.name} - •••• {card.last_four}
                       </option>
                     ))}
                   </select>
                 </div>
-                <p className="text-slate-400 text-xs mt-1">De dónde sale el dinero (solo débito/prepago)</p>
+                <p className="text-slate-400 text-xs mt-1">De dónde sale el dinero (solo débito/efectivo)</p>
               </div>
 
               <div>

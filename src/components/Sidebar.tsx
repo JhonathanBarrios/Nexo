@@ -51,7 +51,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
               <Wallet className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-semibold text-lg">FinanzApp</h1>
+              <h1 className="text-white font-semibold text-lg">Nexo</h1>
               <p className="text-slate-400 text-xs">Gestor Personal</p>
             </div>
           </div>
@@ -120,7 +120,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onOpenChange }: Sideb
               <Wallet className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-white font-semibold text-lg">FinanzApp</h1>
+              <h1 className="text-white font-semibold text-lg">Nexo</h1>
               <p className="text-slate-400 text-xs">Gestor Personal</p>
             </div>
           </div>

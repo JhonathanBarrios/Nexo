@@ -10,9 +10,10 @@ interface RecentTransactionsProps {
   transactions: Transaction[];
   loading: boolean;
   title?: string;
+  filterCardId?: string;
 }
 
-export function RecentTransactions({ transactions: txs, loading, title = 'Transacciones Recientes' }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions: txs, loading, title = 'Transacciones Recientes', filterCardId }: RecentTransactionsProps) {
   const navigate = useNavigate();
   const { categories } = useCategories();
   const { cards } = useCards();
@@ -73,7 +74,7 @@ export function RecentTransactions({ transactions: txs, loading, title = 'Transa
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <h3 className="text-white text-base md:text-lg font-semibold">{title}</h3>
           <button 
-            onClick={() => navigate('/transactions')}
+            onClick={() => navigate('/transactions', filterCardId ? { state: { filterCardId } } : undefined)}
             className="text-blue-400 hover:text-blue-300 text-xs md:text-sm font-medium flex items-center gap-1 transition-colors"
           >
             Ver todas
@@ -92,7 +93,7 @@ export function RecentTransactions({ transactions: txs, loading, title = 'Transa
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <h3 className="text-white text-base md:text-lg font-semibold">{title}</h3>
         <button 
-          onClick={() => navigate('/transactions')}
+          onClick={() => navigate('/transactions', filterCardId ? { state: { filterCardId } } : undefined)}
           className="text-blue-400 hover:text-blue-300 text-xs md:text-sm font-medium flex items-center gap-1 transition-colors"
         >
           Ver todas
