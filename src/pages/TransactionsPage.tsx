@@ -38,7 +38,7 @@ export default function TransactionsPage() {
   const { categories } = useCategories();
   const { cards } = useCards();
   const location = useLocation();
-  
+
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCard, setFilterCard] = useState('all');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'payment' | 'withdrawal' | 'savings'>('all');
