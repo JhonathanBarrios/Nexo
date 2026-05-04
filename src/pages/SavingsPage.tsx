@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useSavingsAccounts, type SavingsAccount } from '../hooks/useSavingsAccounts';
 import { useAuthStore } from '../store/authStore';
-import { useTransactions } from '../hooks/useTransactions';
+import { useTransactions, type TransactionsFilters } from '../hooks/useTransactions';
 import toast from 'react-hot-toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import SavingsAccountModal from '../components/SavingsAccountModal';
@@ -41,7 +41,15 @@ export default function SavingsPage() {
     getMonthlyStats,
     calculateGoalPerPeriod
   } = useSavingsAccounts();
-  const { createTransaction } = useTransactions();
+  
+  // Filtros mínimos (solo necesitamos las funciones de mutación)
+  const defaultFilters: TransactionsFilters = {
+    page: 1,
+    pageSize: 1,
+    sortBy: 'date',
+    sortOrder: 'desc',
+  };
+  const { createTransaction } = useTransactions(defaultFilters);
   const { user } = useAuthStore();
 
   const [showAccountModal, setShowAccountModal] = useState(false);

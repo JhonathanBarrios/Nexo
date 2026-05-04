@@ -1,24 +1,49 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Plus, CreditCard, Edit2, Trash2, BarChart3 } from 'lucide-react';
+import { Plus, CreditCard, Edit2, Trash2, BarChart3, Wallet } from 'lucide-react';
 import { useCards } from '../hooks/useCards';
-import { useTransactions } from '../hooks/useTransactions';
+import { useTransactions, type TransactionsFilters } from '../hooks/useTransactions';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import CardModal from '../components/CardModal';
+import { TransactionModal } from '../components/TransactionModal';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { formatCurrency } from '../utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 
 export default function CardsPage() {
-  const { cards, loading, createCard, updateCard, deleteCard } = useCards();
-  const { transactions } = useTransactions();
+  const { cards, loading, createCard, updateCard, deleteCard, updateCardBalance } = useCards();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<any>(null);
   const [cardIndex, setCardIndex] = useState(0);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [prefilledCardId, setPrefilledCardId] = useState('');
+  const [prefilledType, setPrefilledType] = useState<'income' | 'expense' | 'payment' | 'withdrawal'>('expense');
+
+  // Filtros dinámicos para cargar solo transacciones de la tarjeta seleccionada
+  const cardTransactionsFilters: TransactionsFilters = {
+    cardId: cards[cardIndex]?.id, // Filtrar por tarjeta seleccionada
+    page: 1,
+    pageSize: 5, // Solo las 5 más recientes
+    sortBy: 'date',
+    sortOrder: 'desc',
+  };
+  const { transactions, refetch: refetchTransactions } = useTransactions(cardTransactionsFilters);
+
+  // Filtros para gráficos (todas las transacciones de todas las tarjetas, este mes)
+  const now = new Date();
+  const chartFilters: TransactionsFilters = {
+    startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+    endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
+    page: 1,
+    pageSize: 1000, // Límite alto para gráficos
+    sortBy: 'date',
+    sortOrder: 'desc',
+  };
+  const { transactions: allTransactions } = useTransactions(chartFilters);
 
   const handleDragEnd = (_: any, info: any) => {
     if (info.offset.x < -50) {
@@ -53,6 +78,22 @@ export default function CardsPage() {
     navigate('/transactions', { state: { filterCardId: card.id } });
   };
 
+  const handleCreateTransaction = (card: any) => {
+    setPrefilledCardId(card.id);
+    setPrefilledType(card.type === 'credit' ? 'payment' : 'expense');
+    setShowTransactionModal(true);
+  };
+
+  const handleTransactionSuccess = (transaction: any) => {
+    setShowTransactionModal(false);
+    // Actualizar balance localmente sin refetch
+    if (transaction.card_id) {
+      updateCardBalance(transaction.card_id, transaction);
+    }
+    // Refetch transacciones para actualizar gráficas
+    refetchTransactions();
+  };
+
   const handleSaveCard = async (cardData: any) => {
     try {
       if (editingCard) {
@@ -72,13 +113,13 @@ export default function CardsPage() {
     const labels: Record<string, string> = {
       credit: 'Crédito',
       debit: 'Débito',
-      prepaid: 'Prepago',
+      cash: 'Efectivo',
     };
     return labels[type] || type;
   };
 
   const calculateCardStats = (cardId: string) => {
-    const cardTransactions = transactions.filter(t => t.card_id === cardId && t.type === 'expense');
+    const cardTransactions = allTransactions.filter(t => t.card_id === cardId && t.type === 'expense');
     const totalSpent = cardTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
     const transactionCount = cardTransactions.length;
     
@@ -220,33 +261,46 @@ export default function CardsPage() {
                       <div className="flex justify-between items-start relative z-10">
                         <div>
                           <span className="font-bold text-lg">{card.name}</span>
-                          <p className="text-white/60 text-xs mt-1">{card.bank}</p>
+                          <p className="text-white/60 text-xs mt-1">
+                            {card.type === 'cash' ? 'Efectivo' : card.bank}
+                          </p>
                         </div>
                         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                          <CreditCard className="w-5 h-5" />
+                          {card.type === 'cash' ? (
+                            <Wallet className="w-5 h-5" />
+                          ) : (
+                            <CreditCard className="w-5 h-5" />
+                          )}
                         </div>
                       </div>
 
-                      <div className="absolute top-10 left-6 w-12 h-10 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-md shadow-md relative z-10">
-                        <div className="w-full h-full border border-yellow-600/30 rounded-md p-1">
-                          <div className="w-full h-full border border-yellow-600/30 rounded-sm"></div>
+                      {card.type !== 'cash' && (
+                        <div className="absolute top-10 left-6 w-12 h-10 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-md shadow-md relative z-10">
+                          <div className="w-full h-full border border-yellow-600/30 rounded-md p-1">
+                            <div className="w-full h-full border border-yellow-600/30 rounded-sm"></div>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      <div className="mt-10 text-lg md:text-xl tracking-widest font-mono relative z-10">
-                        {card.last_four.padStart(16, '•').replace(/(.{4})/g, '$1 ').trim()}
-                      </div>
+                      {card.type === 'cash' && (
+                        <div className="absolute top-10 left-6 w-12 h-10 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-md shadow-md relative z-10">
+                          <div className="w-full h-full border border-yellow-600/30 rounded-md p-1">
+                            <div className="w-full h-full border border-yellow-600/30 rounded-sm"></div>
+                          </div>
+                        </div>
+                      )}
 
-                      <div className="mt-4 relative z-10">
+                      {card.type !== 'cash' ? (
+                        <div className="mt-10 text-lg md:text-xl tracking-widest font-mono relative z-10">
+                          {card.last_four.padStart(16, '•').replace(/(.{4})/g, '$1 ').trim()}
+                        </div>
+                      ) : null}
+
+                      <div className={card.type === 'cash' ? 'mt-20 relative z-10' : 'mt-2 relative z-10'}>
                         {card.type === 'credit' ? (
                           <div>
                             <p className="text-white/60 text-[10px] uppercase tracking-wider">Deuda Actual</p>
                             <p className="text-lg md:text-xl font-bold">{formatCurrency(card.current_debt)}</p>
-                            {card.credit_limit && (
-                              <p className="text-white/40 text-xs mt-1">
-                                Límite: {formatCurrency(card.credit_limit)}
-                              </p>
-                            )}
                           </div>
                         ) : (
                           <div>
@@ -254,16 +308,6 @@ export default function CardsPage() {
                             <p className="text-lg md:text-xl font-bold">{formatCurrency(card.current_balance)}</p>
                           </div>
                         )}
-                      </div>
-
-                      <div className="flex justify-between items-end mt-4 relative z-10">
-                        <div className="text-sm md:text-base opacity-80 uppercase tracking-wide">
-                          {card.bank}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-white/60 text-[10px] uppercase tracking-wider">Expira</p>
-                          <p className="text-sm md:text-base font-medium">12/28</p>
-                        </div>
                       </div>
 
                       <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
@@ -305,6 +349,9 @@ export default function CardsPage() {
                           <p className="text-slate-400 text-sm md:text-base">{cards[cardIndex].bank}</p>
                         </div>
                         <div className="flex gap-2">
+                          <button onClick={() => handleCreateTransaction(cards[cardIndex])} className="p-2 hover:bg-green-500/20 rounded-lg transition-colors">
+                            <Plus className="w-4 h-4 text-green-400" />
+                          </button>
                           <button onClick={() => handleEditCard(cards[cardIndex])} className="p-2 hover:bg-slate-700 rounded-lg transition-colors">
                             <Edit2 className="w-4 h-4 text-slate-400" />
                           </button>
@@ -357,9 +404,10 @@ export default function CardsPage() {
             {/* Right Column: Recent Transactions */}
             <div className="flex flex-col">
               <RecentTransactions 
-                transactions={transactions.filter(t => t.card_id === cards[cardIndex].id).slice(0, 5)} 
+                transactions={transactions.slice(0, 5)} 
                 loading={loading}
                 title={`Transacciones de ${cards[cardIndex].name}`}
+                filterCardId={cards[cardIndex]?.id}
               />
             </div>
           </div>
@@ -464,6 +512,15 @@ export default function CardsPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveCard}
         editingCard={editingCard}
+      />
+
+      {/* Transaction Modal */}
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        onSuccess={handleTransactionSuccess}
+        prefilledCardId={prefilledCardId}
+        prefilledType={prefilledType}
       />
     </div>
   );

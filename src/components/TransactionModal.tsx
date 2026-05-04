@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, Plus, Minus, Calendar, Tag, DollarSign, CreditCard } from 'lucide-react'
+import { X, Plus, Minus, Calendar, Tag, DollarSign, CreditCard, ArrowRightLeft } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
-import { useTransactions } from '../hooks/useTransactions'
+import { useTransactions, type TransactionsFilters } from '../hooks/useTransactions'
 import { useCards } from '../hooks/useCards'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
@@ -10,12 +10,14 @@ import toast from 'react-hot-toast'
 interface TransactionModalProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess?: () => void
+  onSuccess?: (transaction: any) => void
   editingTransaction?: any
+  prefilledCardId?: string
+  prefilledType?: 'income' | 'expense' | 'payment' | 'withdrawal'
 }
 
-export function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction }: TransactionModalProps) {
-  const [type, setType] = useState<'income' | 'expense' | 'payment'>('expense')
+export function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction, prefilledCardId, prefilledType }: TransactionModalProps) {
+  const [type, setType] = useState<'income' | 'expense' | 'payment' | 'withdrawal'>('expense')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -26,7 +28,15 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
   
   const { categories } = useCategories()
   const { cards } = useCards()
-  const { createTransaction, updateTransaction } = useTransactions()
+  
+  // Filtros mínimos (solo necesitamos las funciones de mutación)
+  const defaultFilters: TransactionsFilters = {
+    page: 1,
+    pageSize: 1,
+    sortBy: 'date',
+    sortOrder: 'desc',
+  };
+  const { createTransaction, updateTransaction } = useTransactions(defaultFilters)
   const { user } = useAuthStore()
 
   useEffect(() => {
@@ -43,13 +53,13 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         setDescription('')
         setAmount('')
         setCategoryId('')
-        setCardId('')
+        setCardId(prefilledCardId || '')
         setSourceCardId('')
         setDate(new Date().toISOString().split('T')[0])
-        setType('expense')
+        setType(prefilledType || 'expense')
       }
     }
-  }, [isOpen, editingTransaction])
+  }, [isOpen, editingTransaction, prefilledCardId, prefilledType])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +84,8 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
           notes: null,
         })
         toast.success('Transacción actualizada correctamente')
+        onClose()
+        onSuccess?.({ ...editingTransaction, category_id: categoryId, card_id: cardId, source_card_id: sourceCardId, description, amount: parseFloat(amount), type, date })
       } else {
         await createTransaction({
           user_id: user.id,
@@ -87,10 +99,9 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
           notes: null,
         })
         toast.success('Transacción creada correctamente')
+        onClose()
+        onSuccess?.({ card_id: cardId, source_card_id: sourceCardId, description, amount: parseFloat(amount), type, date })
       }
-
-      onClose()
-      onSuccess?.()
     } catch (error: any) {
       toast.error('Error: ' + error.message)
     } finally {
@@ -130,7 +141,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Type Toggle */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setType('expense')}
@@ -166,6 +177,18 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                   >
                     <CreditCard className="w-5 h-5" />
                     Pago TC
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setType('withdrawal')}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                      type === 'withdrawal'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/30'
+                        : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <ArrowRightLeft className="w-5 h-5" />
+                    Retiro
                   </button>
                 </div>
 
@@ -224,29 +247,46 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
 
                 {/* Card */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Tarjeta (opcional)</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    {type === 'withdrawal' ? 'Tarjeta destino (Efectivo)' : type === 'payment' ? 'Tarjeta de crédito' : 'Tarjeta'}
+                  </label>
                   <div className="relative">
                     <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <select
                       value={cardId}
                       onChange={(e) => setCardId(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                      required
                     >
-                      <option value="">Sin tarjeta</option>
-                      {cards.filter(c => c.is_active).map((card) => (
-                        <option key={card.id} value={card.id}>
-                          {card.name} - •••• {card.last_four}
-                        </option>
-                      ))}
+                      <option value="">Seleccionar tarjeta</option>
+                      {type === 'withdrawal' ? (
+                        cards.filter(c => c.is_active && c.type === 'cash').map((card) => (
+                          <option key={card.id} value={card.id}>
+                            {card.name}
+                          </option>
+                        ))
+                      ) : type === 'payment' ? (
+                        cards.filter(c => c.is_active && c.type === 'credit').map((card) => (
+                          <option key={card.id} value={card.id}>
+                            {card.name} - •••• {card.last_four}
+                          </option>
+                        ))
+                      ) : (
+                        cards.filter(c => c.is_active).map((card) => (
+                          <option key={card.id} value={card.id}>
+                            {card.name} - •••• {card.last_four}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>
 
-                {/* Source Card - Solo para pagos */}
-                {type === 'payment' && (
+                {/* Source Card - Solo para pagos y retiros */}
+                {(type === 'payment' || type === 'withdrawal') && (
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Tarjeta origen (requerido)
+                      {type === 'withdrawal' ? 'Tarjeta origen (de donde sale)' : 'Tarjeta origen (requerido)'}
                     </label>
                     <div className="relative">
                       <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -257,14 +297,16 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                         required
                       >
                         <option value="">Seleccionar tarjeta origen</option>
-                        {cards.filter(c => c.is_active && (c.type === 'debit' || c.type === 'prepaid')).map((card) => (
+                        {cards.filter(c => c.is_active && (c.type === 'debit' || c.type === 'cash') && c.id !== cardId).map((card) => (
                           <option key={card.id} value={card.id}>
                             {card.name} - •••• {card.last_four}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <p className="text-slate-400 text-xs mt-1">De dónde sale el dinero (solo débito/prepago)</p>
+                    <p className="text-slate-400 text-xs mt-1">
+                      {type === 'withdrawal' ? 'De donde sale el dinero para efectivo' : 'De donde sale el dinero (solo debito/efectivo)'}
+                    </p>
                   </div>
                 )}
 

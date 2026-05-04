@@ -15,16 +15,25 @@ import {
 import { TrendingUp, Calendar, Target, AlertCircle, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
 import { convertToMonthly, type BudgetPeriod } from '../utils/budget';
-import { useTransactions } from '../hooks/useTransactions';
+import { useTransactions, type TransactionsFilters } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { useCategoryBudgets } from '../hooks/useCategoryBudgets';
+import { useRecurringPayments } from '../hooks/useRecurringPayments';
 
 type DateFilter = 'this_month' | 'last_month' | 'last_3_months' | 'this_year' | 'custom';
 
 export default function AnalyticsPage() {
-  const { transactions } = useTransactions();
+  // Filtros por defecto para analytics (cargar más datos para análisis)
+  const defaultFilters: TransactionsFilters = {
+    page: 1,
+    pageSize: 1000, // Límite alto para análisis
+    sortBy: 'date',
+    sortOrder: 'desc',
+  };
+  const { transactions } = useTransactions(defaultFilters);
   const { categories } = useCategories();
   const { getBudgetForDate } = useCategoryBudgets();
+  const { getAllVariableExpensesForCycle } = useRecurringPayments();
   
   const memoizedCategories = useMemo(() => categories, [categories]);
   
@@ -33,6 +42,7 @@ export default function AnalyticsPage() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [categoryTrendsData, setCategoryTrendsData] = useState<any[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [budgetAlerts, setBudgetAlerts] = useState<any[]>([]);
 
   // Calcular el rango de la quincena actual (fijo: 1-15, 16-fin de mes)
   const getCurrentBudgetCycle = () => {
@@ -410,7 +420,7 @@ export default function AnalyticsPage() {
     };
   };
 
-  const calculateBudgetAlerts = () => {
+  const calculateBudgetAlerts = async () => {
     // Usar el ciclo de presupuesto actual (independiente del filtro seleccionado)
     const { startDate, endDate } = getCurrentBudgetCycle();
     
@@ -419,14 +429,23 @@ export default function AnalyticsPage() {
       return date >= startDate && date <= endDate;
     });
 
+    // Obtener tracking de pagos recurrentes variables para el ciclo actual
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    const variableExpenses = await getAllVariableExpensesForCycle(startDateStr, endDateStr);
+
     return memoizedCategories
       .filter(c => c.budget_amount && c.budget_amount > 0)
       .map(category => {
         const categoryTransactions = periodTransactions.filter(t => t.category_id === category.id && t.type === 'expense');
         const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
         
+        // Sumar tracking de pagos recurrentes variables
+        const variableTracking = variableExpenses[category.id] || 0;
+        const totalSpent = spent + variableTracking;
+        
         // Para presupuesto quincenal, usar el presupuesto original (no convertir)
-        // Para otros períodos, convertir a quincenal
+        // Para otros períodos, convertir a quincenal para comparación
         let budget: number;
         if (category.budget_period === 'biweekly') {
           budget = category.budget_amount || 0; // Presupuesto quincenal exacto
@@ -436,12 +455,12 @@ export default function AnalyticsPage() {
           budget = monthlyBudget / 2; // Convertir mensual a quincenal (÷ 2)
         }
         
-        const percentage = budget > 0 ? (spent / budget) * 100 : 0;
-        const difference = spent - budget;
+        const percentage = budget > 0 ? (totalSpent / budget) * 100 : 0;
+        const difference = totalSpent - budget;
 
         return {
           category: category.name,
-          spent: Math.round(spent),
+          spent: Math.round(totalSpent),
           budget: Math.round(budget),
           percentage: percentage.toFixed(0),
           difference: Math.round(difference),
@@ -455,7 +474,15 @@ export default function AnalyticsPage() {
   const categoryTrends = categoryTrendsData;
   const spendingPattern = calculateSpendingPattern();
   const quickStats = calculateQuickStats();
-  const budgetAlerts = calculateBudgetAlerts();
+
+  // Calcular budgetAlerts de forma async
+  useEffect(() => {
+    const fetchBudgetAlerts = async () => {
+      const alerts = await calculateBudgetAlerts();
+      setBudgetAlerts(alerts);
+    };
+    fetchBudgetAlerts();
+  }, [transactions, memoizedCategories, dateFilter]);
   return (
     <div className="p-8">
       {/* Header */}

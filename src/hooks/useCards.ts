@@ -6,7 +6,7 @@ export interface Card {
   user_id: string;
   name: string;
   bank: string;
-  type: 'credit' | 'debit' | 'prepaid';
+  type: 'credit' | 'debit' | 'cash';
   last_four: string;
   credit_limit: number | null;
   cut_date: number | null;
@@ -49,6 +49,48 @@ export function useCards() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateCardBalance = (cardId: string, transaction: any) => {
+    setCards(prevCards => {
+      return prevCards.map(card => {
+        if (card.id === cardId) {
+          const amount = Number(transaction.amount);
+          let newBalance = Number(card.current_balance);
+          let newDebt = Number(card.current_debt);
+
+          switch (transaction.type) {
+            case 'expense':
+              if (card.type === 'credit') {
+                newDebt += amount;
+              } else {
+                newBalance -= amount;
+              }
+              break;
+            case 'income':
+              newBalance += amount;
+              break;
+            case 'payment':
+              if (card.type === 'credit') {
+                newDebt -= amount;
+              }
+              break;
+            case 'withdrawal':
+              if (card.type === 'cash') {
+                newBalance += amount;
+              }
+              break;
+          }
+
+          return {
+            ...card,
+            current_balance: newBalance,
+            current_debt: newDebt,
+          };
+        }
+        return card;
+      });
+    });
   };
 
   const createCard = async (cardData: Omit<Card, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -116,5 +158,6 @@ export function useCards() {
     createCard,
     updateCard,
     deleteCard,
+    updateCardBalance,
   };
 }

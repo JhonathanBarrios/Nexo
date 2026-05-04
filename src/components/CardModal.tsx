@@ -14,7 +14,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
   const [formData, setFormData] = useState({
     name: '',
     bank: '',
-    type: 'credit' as 'credit' | 'debit' | 'prepaid',
+    type: 'credit' as 'credit' | 'debit' | 'cash',
     last_four: '',
     credit_limit: '',
     cut_date: '',
@@ -89,11 +89,11 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
       toast.error('Por favor ingresa el nombre de la tarjeta');
       return;
     }
-    if (!formData.bank) {
+    if (formData.type !== 'cash' && !formData.bank) {
       toast.error('Por favor selecciona el banco');
       return;
     }
-    if (!formData.last_four || formData.last_four.length !== 4) {
+    if (formData.type !== 'cash' && (!formData.last_four || formData.last_four.length !== 4)) {
       toast.error('Por favor ingresa los últimos 4 dígitos de la tarjeta');
       return;
     }
@@ -107,6 +107,8 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
       credit_limit: formData.credit_limit ? Number(formData.credit_limit) : null,
       cut_date: formData.cut_date ? Number(formData.cut_date) : null,
       payment_date: formData.payment_date ? Number(formData.payment_date) : null,
+      bank: formData.type === 'cash' ? 'Efectivo' : formData.bank,
+      last_four: formData.type === 'cash' ? '0000' : formData.last_four,
     };
 
     onSave(cardData);
@@ -159,23 +161,25 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
               </div>
 
               {/* Banco */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Banco
-                </label>
-                <select
-                  value={formData.bank}
-                  onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Seleccionar banco</option>
-                  {banks.map((bank) => (
-                    <option key={bank} value={bank}>
-                      {bank}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {formData.type !== 'cash' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Banco
+                  </label>
+                  <select
+                    value={formData.bank}
+                    onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Seleccionar banco</option>
+                    {banks.map((bank) => (
+                      <option key={bank} value={bank}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Tipo */}
               <div>
@@ -183,7 +187,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
                   Tipo de Tarjeta
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {['credit', 'debit', 'prepaid'].map((type) => (
+                  {['credit', 'debit', 'cash'].map((type) => (
                     <button
                       key={type}
                       type="button"
@@ -194,13 +198,14 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
                           : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
                       }`}
                     >
-                      {type === 'credit' ? 'Crédito' : type === 'debit' ? 'Débito' : 'Prepago'}
+                      {type === 'credit' ? 'Crédito' : type === 'debit' ? 'Débito' : 'Efectivo'}
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Últimos 4 dígitos */}
+              {formData.type !== 'cash' && (
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                   Últimos 4 Dígitos
@@ -217,6 +222,7 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
                   className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 />
               </div>
+              )}
 
               {/* Campos específicos para crédito */}
               {formData.type === 'credit' && (

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { motion } from 'motion/react'
-import { LogIn, Mail, Lock, Eye, EyeOff, Globe } from 'lucide-react'
+import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -28,10 +28,6 @@ export default function LoginPage() {
     } catch (err) {
       // Error already handled in store
     }
-  }
-
-  const socialLogin = (provider: string) => {
-    console.log(`Logging in with ${provider}`)
   }
 
   return (
@@ -67,6 +63,7 @@ export default function LoginPage() {
             >
               <LogIn className="w-8 h-8 text-white" />
             </motion.div>
+            <h2 className="text-center text-xl font-semibold text-blue-400 mb-2">Nexo</h2>
             <h1 className="text-center text-3xl font-semibold text-white mb-2">
               {isLogin ? 'Bienvenido' : 'Crear Cuenta'}
             </h1>
@@ -186,28 +183,6 @@ export default function LoginPage() {
                   {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
                 </>
               )}
-            </motion.button>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-700"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-slate-900 text-slate-400">O continúa con</span>
-              </div>
-            </div>
-
-            {/* Social Login */}
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => socialLogin('Google')}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 hover:border-slate-600 transition-all"
-            >
-              <Globe className="w-5 h-5" />
-              Google
             </motion.button>
 
             {/* Sign Up Link */}

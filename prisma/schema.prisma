@@ -123,22 +123,24 @@ model Session {
 }
 
 model Card {
-  id            String    @id @default(uuid()) @db.Uuid
-  userId        String    @map("user_id")
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  bank          String
-  type          String
-  lastFour      String    @map("last_four")
-  creditLimit   Decimal?  @map("credit_limit") @db.Decimal(10, 2)
-  cutDate       Int?      @map("cut_date")
-  paymentDate   Int?      @map("payment_date")
-  color         String    @default("#6366f1")
-  icon          String    @default("CreditCard")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  transactions  Transaction[]
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  bank            String
+  type            String
+  lastFour        String    @map("last_four")
+  creditLimit     Decimal?  @map("credit_limit") @db.Decimal(10, 2)
+  cutDate         Int?      @map("cut_date")
+  paymentDate     Int?      @map("payment_date")
+  color           String    @default("#6366f1")
+  icon            String    @default("CreditCard")
+  isActive        Boolean   @default(true) @map("is_active")
+  currentBalance  Decimal   @default(0) @map("current_balance") @db.Decimal(10, 2)
+  currentDebt     Decimal   @default(0) @map("current_debt") @db.Decimal(10, 2)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  transactions    Transaction[]
 
   @@index([userId])
   @@index([isActive])
