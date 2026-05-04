@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   BarChart,
@@ -11,26 +11,51 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
 } from 'recharts';
 import { TrendingUp, Calendar, Target, AlertCircle, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
+import { convertToMonthly, type BudgetPeriod } from '../utils/budget';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { useCategoryBudgets } from '../hooks/useCategoryBudgets';
 
 type DateFilter = 'this_month' | 'last_month' | 'last_3_months' | 'this_year' | 'custom';
 
 export default function AnalyticsPage() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
+  const { getBudgetForDate } = useCategoryBudgets();
+  
+  const memoizedCategories = useMemo(() => categories, [categories]);
   
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [categoryTrendsData, setCategoryTrendsData] = useState<any[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  // Calcular el rango de la quincena actual (fijo: 1-15, 16-fin de mes)
+  const getCurrentBudgetCycle = () => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (currentDay <= 15) {
+      // Primera quincena: 1-15
+      startDate = new Date(currentYear, currentMonth, 1);
+      endDate = new Date(currentYear, currentMonth, 15);
+    } else {
+      // Segunda quincena: 16-fin de mes
+      startDate = new Date(currentYear, currentMonth, 16);
+      endDate = new Date(currentYear, currentMonth + 1, 0); // Último día del mes
+    }
+
+    return { startDate, endDate };
+  };
 
   // Filter transactions by date
   const filterTransactionsByDate = (txs: typeof transactions) => {
@@ -63,7 +88,94 @@ export default function AnalyticsPage() {
     });
   };
 
-  const filteredTransactions = filterTransactionsByDate(transactions);
+  const filteredTransactions = useMemo(() => filterTransactionsByDate(transactions), [transactions, dateFilter, customStartDate, customEndDate]);
+
+  // Calcular categoryTrendsData de forma async cuando cambie el filtro
+  useEffect(() => {
+    const calculateCategoryTrendsAsync = async () => {
+      if (isCalculating) return; // Evitar múltiples ejecuciones
+      setIsCalculating(true);
+      
+      let startDate: Date;
+      let endDate: Date;
+      const now = new Date();
+      
+      switch (dateFilter) {
+        case 'this_month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case 'last_month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        case 'last_3_months':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        case 'this_year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+        case 'custom':
+          startDate = new Date(customStartDate + 'T00:00:00');
+          endDate = new Date(customEndDate + 'T23:59:59');
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      }
+
+      const data = await Promise.all(memoizedCategories.map(async (category) => {
+        const periodTransactions = filteredTransactions.filter(t => {
+          const date = new Date(t.date + 'T00:00:00');
+          return t.category_id === category.id && 
+                 t.type === 'expense' &&
+                 date >= startDate && date <= endDate;
+        });
+
+        const actual = periodTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+        
+        // Para gráficos, usar presupuesto histórico si es "last_month"
+        let presupuesto: number;
+        
+        if (dateFilter === 'last_month') {
+          // Buscar presupuesto histórico para el mes anterior (ya viene en formato mensual)
+          const historicalBudget = await getBudgetForDate(category.id, startDate);
+          if (!historicalBudget) {
+            return null; // No incluir si no hay presupuesto histórico
+          }
+          presupuesto = historicalBudget; // Ya es mensual
+        } else if (dateFilter === 'this_month') {
+          // Para mes actual, usar presupuesto mensual equivalente
+          presupuesto = category.budget_monthly || 0;
+        } else if (dateFilter === 'last_3_months') {
+          presupuesto = (category.budget_monthly || 0) * 3;
+        } else if (dateFilter === 'this_year') {
+          presupuesto = (category.budget_monthly || 0) * 12;
+        } else {
+          const weeksInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+          presupuesto = (category.budget_monthly || 0) * (weeksInPeriod / 4);
+        }
+        
+        const weeksInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+        const promedio = periodTransactions.length > 0 ? actual / weeksInPeriod : 0;
+
+        return {
+          category: category.name,
+          actual: Math.round(actual),
+          presupuesto: presupuesto,
+          promedio: Math.round(promedio),
+        };
+      }));
+
+      setCategoryTrendsData(data.filter(c => c && (c.actual > 0 || c.presupuesto > 0)));
+      setIsCalculating(false);
+    };
+
+    calculateCategoryTrendsAsync();
+  }, [dateFilter, memoizedCategories, filteredTransactions, customStartDate, customEndDate]);
+
 
   // Calcular datos reales
   const calculateMonthlyData = () => {
@@ -157,62 +269,6 @@ export default function AnalyticsPage() {
     return monthlyData.filter(m => m.ingresos > 0 || m.gastos > 0);
   };
 
-  const calculateCategoryTrends = () => {
-    let startDate: Date;
-    let endDate: Date;
-    
-    const now = new Date();
-    
-    switch (dateFilter) {
-      case 'this_month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'last_month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'last_3_months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'this_year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'custom':
-        startDate = new Date(customStartDate + 'T00:00:00');
-        endDate = new Date(customEndDate + 'T23:59:59');
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    }
-
-    return categories.map(category => {
-      const periodTransactions = filteredTransactions.filter(t => {
-        const date = new Date(t.date + 'T00:00:00');
-        return t.category_id === category.id && 
-               t.type === 'expense' &&
-               date >= startDate && date <= endDate;
-      });
-
-      const actual = periodTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-      const presupuesto = category.budget_monthly || 0;
-      
-      // Calcular promedio de todo el período
-      const weeksInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-      const promedio = periodTransactions.length > 0 ? actual / weeksInPeriod : 0;
-
-      return {
-        category: category.name,
-        actual: Math.round(actual),
-        presupuesto: presupuesto * weeksInPeriod, // Ajustar presupuesto al período
-        promedio: Math.round(promedio),
-      };
-    }).filter(c => c.actual > 0 || c.presupuesto > 0);
-  };
-
   const calculateSpendingPattern = () => {
     const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
     
@@ -259,25 +315,6 @@ export default function AnalyticsPage() {
       const averageAmount = totalAmount / weeksInPeriod;
       
       return { day, amount: Math.round(averageAmount) };
-    });
-  };
-
-  const calculateRadarData = () => {
-    const maxAmount = Math.max(...categories.map(c => {
-      const categoryTransactions = filteredTransactions.filter(t => t.category_id === c.id && t.type === 'expense');
-      return categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-    }), 1);
-
-    return categories.slice(0, 6).map(category => {
-      const categoryTransactions = filteredTransactions.filter(t => t.category_id === category.id && t.type === 'expense');
-      const amount = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-      const normalized = Math.round((amount / maxAmount) * 150);
-      
-      return {
-        subject: category.name,
-        A: normalized,
-        fullMark: 150,
-      };
     });
   };
 
@@ -331,19 +368,30 @@ export default function AnalyticsPage() {
     const daysInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)));
     const gastoPromedioDia = gastos / daysInPeriod;
 
-    // Categorías en presupuesto (usando presupuesto mensual ajustado al período)
-    const weeksInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-    const monthsInPeriod = weeksInPeriod / 4.33; // Aproximación de meses
-    
-    const categoriesWithBudget = categories.filter(c => c.budget_monthly && c.budget_monthly > 0);
+    // Categorías en presupuesto (usar ciclo actual, no el filtro seleccionado)
+    const { startDate: budgetStartDate, endDate: budgetEndDate } = getCurrentBudgetCycle();
+    const categoriesWithBudget = memoizedCategories.filter(c => c.budget_amount && c.budget_amount > 0);
     const categoriesInBudget = categoriesWithBudget.filter(c => {
-      const categoryTransactions = periodTransactions.filter(t => t.category_id === c.id && t.type === 'expense');
+      const categoryTransactions = transactions.filter(t => {
+        const date = new Date(t.date + 'T00:00:00');
+        return t.category_id === c.id && t.type === 'expense' && date >= budgetStartDate && date <= budgetEndDate;
+      });
       const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-      return spent <= ((c.budget_monthly || 0) * monthsInPeriod);
+      
+      // Usar presupuesto quincenal exacto
+      let budget: number;
+      if (c.budget_period === 'biweekly') {
+        budget = c.budget_amount || 0;
+      } else {
+        const monthlyBudget = convertToMonthly(c.budget_amount || 0, c.budget_period as BudgetPeriod);
+        budget = monthlyBudget / 2; // Convertir mensual a quincenal (÷ 2)
+      }
+      
+      return spent <= budget;
     });
 
     // Mayor gasto del período
-    const expensesByCategory = categories.map(c => {
+    const expensesByCategory = memoizedCategories.map(c => {
       const categoryTransactions = periodTransactions.filter(t => t.category_id === c.id && t.type === 'expense');
       const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
       return { category: c.name, amount: spent };
@@ -363,50 +411,31 @@ export default function AnalyticsPage() {
   };
 
   const calculateBudgetAlerts = () => {
-    let startDate: Date;
-    let endDate: Date;
-    const now = new Date();
-    
-    switch (dateFilter) {
-      case 'this_month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        break;
-      case 'last_month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'last_3_months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'this_year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        break;
-      case 'custom':
-        startDate = new Date(customStartDate + 'T00:00:00');
-        endDate = new Date(customEndDate + 'T23:59:59');
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    }
-
-    const weeksInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-    const monthsInPeriod = weeksInPeriod / 4.33; // Aproximación de meses
+    // Usar el ciclo de presupuesto actual (independiente del filtro seleccionado)
+    const { startDate, endDate } = getCurrentBudgetCycle();
     
     const periodTransactions = filteredTransactions.filter(t => {
       const date = new Date(t.date + 'T00:00:00');
       return date >= startDate && date <= endDate;
     });
 
-    return categories
-      .filter(c => c.budget_monthly && c.budget_monthly > 0)
+    return memoizedCategories
+      .filter(c => c.budget_amount && c.budget_amount > 0)
       .map(category => {
         const categoryTransactions = periodTransactions.filter(t => t.category_id === category.id && t.type === 'expense');
         const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-        const budget = (category.budget_monthly || 0) * monthsInPeriod; // Ajustar presupuesto al período
+        
+        // Para presupuesto quincenal, usar el presupuesto original (no convertir)
+        // Para otros períodos, convertir a quincenal
+        let budget: number;
+        if (category.budget_period === 'biweekly') {
+          budget = category.budget_amount || 0; // Presupuesto quincenal exacto
+        } else {
+          // Convertir otros períodos a quincenal para comparación
+          const monthlyBudget = convertToMonthly(category.budget_amount || 0, category.budget_period as BudgetPeriod);
+          budget = monthlyBudget / 2; // Convertir mensual a quincenal (÷ 2)
+        }
+        
         const percentage = budget > 0 ? (spent / budget) * 100 : 0;
         const difference = spent - budget;
 
@@ -423,9 +452,8 @@ export default function AnalyticsPage() {
   };
 
   const monthlyComparison = calculateMonthlyData();
-  const categoryTrends = calculateCategoryTrends();
+  const categoryTrends = categoryTrendsData;
   const spendingPattern = calculateSpendingPattern();
-  const radarData = calculateRadarData();
   const quickStats = calculateQuickStats();
   const budgetAlerts = calculateBudgetAlerts();
   return (
@@ -560,7 +588,7 @@ export default function AnalyticsPage() {
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-slate-400 text-sm mb-1">Gasto Promedio/Día</p>
-              <h3 className="text-white text-3xl font-bold">${quickStats.gastoPromedioDia}</h3>
+              <h3 className="text-white text-3xl font-bold">{formatCurrency(quickStats.gastoPromedioDia)}</h3>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
               <Calendar className="w-6 h-6 text-white" />
@@ -682,12 +710,12 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Budget vs Actual */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="lg:col-span-2 bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50"
+          className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50"
         >
           <h3 className="text-white text-lg font-semibold mb-6">
             Presupuesto vs Gasto Real por Categoría
@@ -710,32 +738,6 @@ export default function AnalyticsPage() {
               <Bar dataKey="actual" fill="#f59e0b" radius={[0, 8, 8, 0]} />
               <Bar dataKey="promedio" fill="#10b981" radius={[0, 8, 8, 0]} />
             </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Spending Distribution Radar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800/50"
-        >
-          <h3 className="text-white text-lg font-semibold mb-6">
-            Distribución de Gastos
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="#334155" />
-              <PolarAngleAxis dataKey="subject" stroke="#94a3b8" />
-              <PolarRadiusAxis stroke="#94a3b8" />
-              <Radar
-                name="Gastos"
-                dataKey="A"
-                stroke="#8b5cf6"
-                fill="#8b5cf6"
-                fillOpacity={0.6}
-              />
-            </RadarChart>
           </ResponsiveContainer>
         </motion.div>
       </div>
@@ -804,7 +806,7 @@ export default function AnalyticsPage() {
                           : 'text-green-400'
                       }`}
                     >
-                      {alert.difference > 0 ? `+$${alert.difference}` : `-$${Math.abs(alert.difference)}`}
+                      {alert.difference > 0 ? `+${formatCurrency(alert.difference)}` : `-${formatCurrency(Math.abs(alert.difference))}`}
                     </span>
                   </div>
                 </div>

@@ -357,6 +357,29 @@ export function useRecurringPayments() {
     }
   }
 
+  const getVariableExpensesForCycle = async (paymentId: string, startDate: string, endDate: string): Promise<number> => {
+    try {
+      const trackingData = await fetchServiceUsageTracking(paymentId, startDate, endDate);
+      return trackingData.reduce((sum, item) => sum + item.amount, 0);
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  const getAllVariableExpensesForCycle = async (startDate: string, endDate: string): Promise<Record<string, number>> => {
+    const variableExpenses: Record<string, number> = {};
+    
+    const variablePayments = payments.filter(p => p.is_variable && p.is_active && p.category_id);
+    
+    for (const payment of variablePayments) {
+      if (!payment.category_id) continue;
+      const expense = await getVariableExpensesForCycle(payment.id, startDate, endDate);
+      variableExpenses[payment.category_id] = (variableExpenses[payment.category_id] || 0) + expense;
+    }
+    
+    return variableExpenses;
+  }
+
   return {
     payments,
     loading,
@@ -374,5 +397,7 @@ export function useRecurringPayments() {
     updatePaymentTotalFromTracking,
     markAsPaid,
     calculatePendingCycles,
+    getVariableExpensesForCycle,
+    getAllVariableExpensesForCycle,
   }
 }
