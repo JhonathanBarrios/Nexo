@@ -254,3 +254,212 @@ CREATE TRIGGER trigger_update_card_balance_delete
   AFTER DELETE ON transactions
   FOR EACH ROW
   EXECUTE FUNCTION update_card_balance();
+
+-- ============================================
+-- MIGRACIÓN: Presupuesto por Período en Categorías
+-- ============================================
+
+-- 8. Agregar columnas para presupuesto por período a categories
+ALTER TABLE categories
+ADD COLUMN IF NOT EXISTS budget_period VARCHAR(20) DEFAULT 'monthly',
+ADD COLUMN IF NOT EXISTS budget_amount DECIMAL(15,2) DEFAULT 0;
+
+-- 9. Migrar datos existentes de budget_monthly a budget_amount (solo si la columna existe)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'categories' AND column_name = 'budget_monthly') THEN
+        UPDATE categories
+        SET budget_amount = budget_monthly,
+            budget_period = 'monthly'
+        WHERE budget_monthly IS NOT NULL;
+    END IF;
+END $$;
+
+-- 10. Opcional: Eliminar budget_monthly después de migración (descomentar después de verificar)
+-- ALTER TABLE categories DROP COLUMN IF EXISTS budget_monthly;
+
+-- 11. Actualizar registros existentes que tengan períodos no válidos
+UPDATE categories
+SET budget_period = 'monthly'
+WHERE budget_period IS NULL OR budget_period NOT IN ('biweekly', 'monthly');
+
+-- 12. Agregar restricción CHECK a categories.budget_period
+ALTER TABLE categories
+ADD CONSTRAINT IF NOT EXISTS check_budget_period_categories 
+CHECK (budget_period IN ('biweekly', 'monthly'));
+
+-- ============================================
+-- MIGRACIÓN: Tabla category_budgets para historial de presupuestos
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS category_budgets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  budget_amount DECIMAL(15,2) NOT NULL,
+  budget_period VARCHAR(20) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CHECK (end_date >= start_date)
+);
+
+-- Índices para búsquedas eficientes
+CREATE INDEX IF NOT EXISTS idx_category_budgets_category_id ON category_budgets(category_id);
+CREATE INDEX IF NOT EXISTS idx_category_budgets_date_range ON category_budgets(start_date, end_date);
+
+-- Actualizar registros existentes que tengan períodos no válidos
+UPDATE category_budgets
+SET budget_period = 'monthly'
+WHERE budget_period IS NULL OR budget_period NOT IN ('biweekly', 'monthly');
+
+-- Agregar restricción CHECK a category_budgets.budget_period
+ALTER TABLE category_budgets
+ADD CONSTRAINT IF NOT EXISTS check_budget_period_category_budgets 
+CHECK (budget_period IN ('biweekly', 'monthly'));
+
+-- Políticas RLS
+ALTER TABLE category_budgets ENABLE ROW LEVEL SECURITY;
+
+-- Usuarios pueden ver sus propios presupuestos
+CREATE POLICY "Users can view own category budgets"
+  ON category_budgets FOR SELECT
+  USING (
+    category_id IN (
+      SELECT id FROM categories WHERE user_id = auth.uid()
+    )
+  );
+
+-- Usuarios pueden insertar sus propios presupuestos
+CREATE POLICY "Users can insert own category budgets"
+  ON category_budgets FOR INSERT
+  WITH CHECK (
+    category_id IN (
+      SELECT id FROM categories WHERE user_id = auth.uid()
+    )
+  );
+
+-- Usuarios pueden actualizar sus propios presupuestos
+CREATE POLICY "Users can update own category budgets"
+  ON category_budgets FOR UPDATE
+  USING (
+    category_id IN (
+      SELECT id FROM categories WHERE user_id = auth.uid()
+    )
+  );
+
+-- Usuarios pueden eliminar sus propios presupuestos
+CREATE POLICY "Users can delete own category budgets"
+  ON category_budgets FOR DELETE
+  USING (
+    category_id IN (
+      SELECT id FROM categories WHERE user_id = auth.uid()
+    )
+  );
+
+-- Trigger para updated_at
+CREATE TRIGGER update_category_budgets_updated_at
+  BEFORE UPDATE ON category_budgets
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- MIGRACIÓN: Recrear foreign keys de user_settings y user_notifications
+-- ============================================
+
+-- Eliminar foreign keys existentes (si apuntan a auth.users, eliminarlos)
+ALTER TABLE user_settings DROP CONSTRAINT IF EXISTS user_settings_user_id_fkey;
+ALTER TABLE user_notifications DROP CONSTRAINT IF EXISTS user_notifications_user_id_fkey;
+
+-- Recrear foreign key de user_settings apuntando a users.id
+ALTER TABLE user_settings 
+ADD CONSTRAINT user_settings_user_id_fkey 
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- Recrear foreign key de user_notifications apuntando a users.id
+ALTER TABLE user_notifications 
+ADD CONSTRAINT user_notifications_user_id_fkey 
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- ============================================
+-- MIGRACIÓN: Política INSERT para tabla users
+-- ============================================
+
+-- Agregar política INSERT para que usuarios autenticados puedan crear su perfil
+DROP POLICY IF EXISTS "Users can insert own profile" ON users;
+CREATE POLICY "Users can insert own profile"
+  ON users FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
+-- ============================================
+-- MIGRACIÓN: Triggers para inicializar configuraciones de usuario
+-- (En tabla users pública, no en auth.users)
+-- ============================================
+
+-- Función para crear user_settings al registrar usuario
+CREATE OR REPLACE FUNCTION create_user_settings()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO user_settings (user_id, currency, date_format, first_day_of_week, savings_goal)
+  VALUES (
+    NEW.id,
+    'COP',
+    'DD/MM/YYYY',
+    'Monday',
+    0
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- Función para crear user_notifications al registrar usuario
+CREATE OR REPLACE FUNCTION create_user_notifications()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  INSERT INTO user_notifications (
+    user_id,
+    budget_alerts_enabled,
+    alert_at_50,
+    alert_at_80,
+    alert_at_100,
+    payment_reminders_enabled,
+    reminder_days_before,
+    savings_alerts_enabled,
+    savings_reminder_days_before
+  )
+  VALUES (
+    NEW.id,
+    true,
+    true,
+    true,
+    true,
+    true,
+    3,
+    false,
+    1
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- NO modificar el trigger existente on_user_created (ya inserta categorías)
+-- Solo agregar triggers adicionales para settings y notifications
+DROP TRIGGER IF EXISTS on_user_created_settings ON users;
+CREATE TRIGGER on_user_created_settings
+  AFTER INSERT ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION create_user_settings();
+
+DROP TRIGGER IF EXISTS on_user_created_notifications ON users;
+CREATE TRIGGER on_user_created_notifications
+  AFTER INSERT ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION create_user_notifications();
+

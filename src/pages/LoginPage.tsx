@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { motion } from 'motion/react'
-import { LogIn, Mail, Lock, Eye, EyeOff, Globe } from 'lucide-react'
+import { LogIn, Mail, Lock, Eye, EyeOff, Globe, Fingerprint } from 'lucide-react'
+import { useWebAuthn } from '../hooks/useWebAuthn'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -13,6 +14,16 @@ export default function LoginPage() {
   
   const { signIn, signUp, loading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
+  const { isSupported, isLoading: webAuthnLoading, authenticateWithPasskey } = useWebAuthn()
+
+  const handleBiometricLogin = async () => {
+    try {
+      await authenticateWithPasskey(email)
+      navigate('/dashboard')
+    } catch (err) {
+      console.error('Error en login biométrico:', err)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -209,6 +220,34 @@ export default function LoginPage() {
               <Globe className="w-5 h-5" />
               Google
             </motion.button>
+
+            {/* Biometric Login - Solo si es soportado */}
+            {isSupported && isLogin && (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleBiometricLogin}
+                disabled={webAuthnLoading || !email}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {webAuthnLoading ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                    />
+                    Verificando huella...
+                  </>
+                ) : (
+                  <>
+                    <Fingerprint className="w-5 h-5" />
+                    Ingresar con huella
+                  </>
+                )}
+              </motion.button>
+            )}
 
             {/* Sign Up Link */}
             <p className="text-center text-sm text-slate-400">

@@ -7,7 +7,9 @@ export interface Category {
   name: string
   icon: string
   color: string
-  budget_monthly: number
+  budget_monthly: number // Mantener por compatibilidad
+  budget_period: string // 'weekly', 'biweekly', 'monthly', 'quarterly', 'annually'
+  budget_amount: number // Monto del presupuesto según el período
   created_at: string
   updated_at: string
 }

@@ -21,7 +21,7 @@ export function useUserSettings() {
     try {
       setLoading(true)
       setError(null)
-      
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setSettings(null)
@@ -35,7 +35,22 @@ export function useUserSettings() {
         .maybeSingle()
 
       if (error) throw error
-      setSettings(data)
+
+      // Si no existe data, usar valores por defecto
+      if (!data) {
+        setSettings({
+          id: '',
+          user_id: user.id,
+          currency: 'COP',
+          date_format: 'DD/MM/YYYY',
+          first_day_of_week: 'Monday',
+          savings_goal: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+      } else {
+        setSettings(data)
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {

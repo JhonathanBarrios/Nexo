@@ -8,7 +8,6 @@ import { UpcomingPayments } from '../components/UpcomingPayments';
 import { TrendingUp, TrendingDown, Wallet, Plus, Calendar, PiggyBank, CreditCard } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTransactions } from '../hooks/useTransactions';
-import { useUserProfile } from '../hooks/useUserProfile';
 import { useSavingsAccounts } from '../hooks/useSavingsAccounts';
 import { useState } from 'react';
 import { Fragment } from 'react';
@@ -19,11 +18,33 @@ type DateFilter = 'today' | 'this_month' | 'last_month' | 'custom';
 export default function DashboardPage() {
   const { transactions, loading, refetch } = useTransactions();
   const { getTotalSavings } = useSavingsAccounts();
-  const { getCurrentBudgetCycle } = useUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>('this_month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+
+  // Calcular el rango de la quincena actual (fijo: 1-15, 16-fin de mes)
+  const getCurrentBudgetCycle = () => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (currentDay <= 15) {
+      // Primera quincena: 1-15
+      startDate = new Date(currentYear, currentMonth, 1);
+      endDate = new Date(currentYear, currentMonth, 15);
+    } else {
+      // Segunda quincena: 16-fin de mes
+      startDate = new Date(currentYear, currentMonth, 16);
+      endDate = new Date(currentYear, currentMonth + 1, 0); // Último día del mes
+    }
+
+    return { start: startDate, end: endDate };
+  };
 
   // Filter transactions by date
   const filterTransactionsByDate = (txs: typeof transactions) => {
