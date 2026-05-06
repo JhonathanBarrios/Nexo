@@ -41,9 +41,28 @@ const legacyGradientToHex: Record<string, string> = {
 };
 
 const iconOptions = [
-  'Utensils', 'Car', 'Home', 'Film', 'Heart', 'ShoppingBag', 'BookOpen',
-  'Coffee', 'Smartphone', 'Plane', 'Gamepad2', 'Music', 'Camera', 'Dumbbell',
-  'Stethoscope', 'Briefcase', 'GraduationCap', 'Baby', 'Pet', 'Flower2',
+  // Comida
+  'Utensils', 'Pizza', 'Coffee', 'IceCream', 'Burger', 'Beef', 'UtensilsCrossed',
+  // Transporte
+  'Car', 'Plane', 'Bike', 'Train', 'Bus', 'Ship', 'Fuel',
+  // Hogar
+  'Home', 'Sofa', 'Tv', 'Lamp', 'Refrigerator', 'WashingMachine',
+  // Entretenimiento
+  'Film', 'Gamepad2', 'Music', 'Camera', 'Headphones', 'Gamepad',
+  // Compras
+  'ShoppingBag', 'ShoppingCart', 'Shirt', 'Watch', 'Gift', 'Package',
+  // Salud
+  'Stethoscope', 'Pill', 'Syringe', 'Activity', 'HeartPulse',
+  // Finanzas
+  'Wallet', 'PiggyBank', 'CreditCard', 'Banknote', 'TrendingUp', 'TrendingDown', 'DollarSign',
+  // Servicios
+  'Wifi', 'Zap', 'Cpu', 'Server', 'Database', 'WifiOff',
+  // Educación
+  'BookOpen', 'GraduationCap', 'School', 'PenTool',
+  // Trabajo
+  'Briefcase', 'Building2', 'Laptop', 'Monitor',
+  // Otros
+  'Heart', 'Smartphone', 'Dumbbell', 'Baby', 'Pet', 'Flower2', 'Calendar', 'Bell', 'Shield',
 ];
 
 export default function SettingsPage() {
