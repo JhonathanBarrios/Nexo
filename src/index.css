@@ -20,3 +20,22 @@ html, body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+.template-color-input {
+  padding: 0;
+}
+
+.template-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: inherit;
+}
+
+.template-color-input::-webkit-color-swatch {
+  border: 0;
+  border-radius: inherit;
+}
+
+.template-color-input::-moz-color-swatch {
+  border: 0;
+  border-radius: inherit;
+}

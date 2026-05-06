@@ -17,17 +17,6 @@ const frequencyOptions = [
   { value: 'monthly', label: 'Mensual' },
 ];
 
-const colors = [
-  '#10b981', // Emerald
-  '#6366f1', // Indigo
-  '#8b5cf6', // Purple
-  '#ec4899', // Pink
-  '#ef4444', // Red
-  '#f59e0b', // Amber
-  '#06b6d4', // Cyan
-  '#3b82f6', // Blue
-];
-
 export default function SavingsAccountModal({
   isOpen,
   onClose,
@@ -246,12 +235,13 @@ export default function SavingsAccountModal({
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
-                        type="number"
-                        value={formData.goal_amount}
-                        onChange={(e) => setFormData({ ...formData, goal_amount: e.target.value })}
-                        placeholder="0.00"
-                        step="1000"
-                        min="0"
+                        type="text"
+                        value={formData.goal_amount ? Number(formData.goal_amount).toLocaleString('es-CO') : ''}
+                        onChange={(e) => {
+                          const numericValue = e.target.value.replace(/\D/g, '');
+                          setFormData({ ...formData, goal_amount: numericValue });
+                        }}
+                        placeholder="0"
                         className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -333,21 +323,12 @@ export default function SavingsAccountModal({
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                   Color
                 </label>
-                <div className="flex gap-3 flex-wrap">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color })}
-                      className={`w-10 h-10 rounded-full transition-all ${
-                        formData.color === color
-                          ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900'
-                          : ''
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  className="template-color-input w-full h-10 bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden appearance-none cursor-pointer"
+                />
               </div>
 
               {formData.is_goal_based && !editingAccount && (

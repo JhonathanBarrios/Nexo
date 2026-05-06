@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface CardModalProps {
@@ -23,17 +23,6 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
     icon: 'CreditCard',
     is_active: true,
   });
-
-  const colors = [
-    '#6366f1', // Indigo
-    '#8b5cf6', // Purple
-    '#ec4899', // Pink
-    '#ef4444', // Red
-    '#f59e0b', // Amber
-    '#10b981', // Emerald
-    '#06b6d4', // Cyan
-    '#3b82f6', // Blue
-  ];
 
   const banks = [
     'Banco AV Villas',
@@ -231,16 +220,19 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
                     <label className="block text-sm font-medium text-slate-300 mb-2">
                       Límite de Crédito
                     </label>
-                    <input
-                      type="text"
-                      value={formData.credit_limit}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '');
-                        setFormData({ ...formData, credit_limit: value });
-                      }}
-                      placeholder="0"
-                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.credit_limit ? Number(formData.credit_limit).toLocaleString('es-CO') : ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          setFormData({ ...formData, credit_limit: value });
+                        }}
+                        placeholder="0"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -281,19 +273,12 @@ export default function CardModal({ isOpen, onClose, onSave, editingCard }: Card
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                   Color
                 </label>
-                <div className="flex gap-3 flex-wrap">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color })}
-                      className={`w-10 h-10 rounded-full transition-all ${
-                        formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  className="template-color-input w-full h-10 bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden appearance-none cursor-pointer"
+                />
               </div>
 
               {/* Submit */}

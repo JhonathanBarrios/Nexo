@@ -18,7 +18,10 @@ export function RecentTransactions({ transactions: txs, loading, title = 'Transa
   const { categories } = useCategories();
   const { cards } = useCards();
 
-  const recentTransactions = txs.slice(0, 5);
+  // Ordenar por fecha de creación descendente y tomar las 5 más recientes
+  const recentTransactions = txs
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
 
   const getCategoryInfo = (categoryId: string | null) => {
     const category = categories.find(c => c.id === categoryId);

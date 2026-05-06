@@ -27,18 +27,18 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatCurrency } from '../utils/currency';
 import { convertToMonthly, periodLabels, type BudgetPeriod } from '../utils/budget';
 
-const colorOptions = [
-  'from-blue-500 to-blue-600',
-  'from-purple-500 to-purple-600',
-  'from-pink-500 to-pink-600',
-  'from-red-500 to-red-600',
-  'from-green-500 to-green-600',
-  'from-indigo-500 to-indigo-600',
-  'from-cyan-500 to-cyan-600',
-  'from-orange-500 to-orange-600',
-  'from-amber-500 to-amber-600',
-  'from-slate-500 to-slate-600',
-];
+const legacyGradientToHex: Record<string, string> = {
+  'from-blue-500 to-blue-600': '#3b82f6',
+  'from-purple-500 to-purple-600': '#8b5cf6',
+  'from-pink-500 to-pink-600': '#ec4899',
+  'from-red-500 to-red-600': '#ef4444',
+  'from-green-500 to-green-600': '#10b981',
+  'from-indigo-500 to-indigo-600': '#6366f1',
+  'from-cyan-500 to-cyan-600': '#06b6d4',
+  'from-orange-500 to-orange-600': '#f97316',
+  'from-amber-500 to-amber-600': '#f59e0b',
+  'from-slate-500 to-slate-600': '#64748b',
+};
 
 const iconOptions = [
   'Utensils', 'Car', 'Home', 'Film', 'Heart', 'ShoppingBag', 'BookOpen',
@@ -73,13 +73,26 @@ export default function SettingsPage() {
   const { settings: userSettings, updateSettings: updateUserSettings } = useUserSettings();
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({ name: '', icon: 'Tag', color: 'from-blue-500 to-blue-600', budget: '', budget_period: 'monthly' });
+  const [formData, setFormData] = useState({ name: '', icon: 'Tag', color: '#3b82f6', budget: '', budget_period: 'monthly' });
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; onConfirm: () => void; title: string; message: string }>({
     isOpen: false,
     onConfirm: () => {},
     title: '',
     message: '',
   });
+
+  const getColorPickerValue = (color: string): string => {
+    if (color?.startsWith('#')) return color;
+    return legacyGradientToHex[color] || '#3b82f6';
+  };
+
+  const getCategoryColorStyle = (color: string) => {
+    if (color?.startsWith('#')) {
+      return { style: { backgroundColor: color }, className: '' };
+    }
+
+    return { style: undefined, className: `bg-gradient-to-br ${color || 'from-blue-500 to-blue-600'}` };
+  };
 
   useEffect(() => {
     if (user) {
@@ -120,7 +133,7 @@ export default function SettingsPage() {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    setFormData({ name: '', icon: 'Tag', color: 'from-blue-500 to-blue-600', budget: '', budget_period: 'monthly' });
+    setFormData({ name: '', icon: 'Tag', color: '#3b82f6', budget: '', budget_period: 'monthly' });
     setShowCategoryModal(true);
   };
 
@@ -129,7 +142,7 @@ export default function SettingsPage() {
     setFormData({
       name: category.name,
       icon: category.icon,
-      color: category.color,
+      color: getColorPickerValue(category.color),
       budget: category.budget_amount?.toString() || '',
       budget_period: category.budget_period || 'monthly',
     });
@@ -407,14 +420,19 @@ export default function SettingsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {categories.map((category) => (
+            {categories.map((category) => {
+              const colorConfig = getCategoryColorStyle(category.color);
+              return (
               <motion.div
                 key={category.id}
                 whileHover={{ scale: 1.02 }}
                 className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 hover:border-slate-600 transition-all group"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className={`w-12 h-12 bg-gradient-to-br ${category.color} rounded-xl flex items-center justify-center shadow-lg`}>
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${colorConfig.className}`}
+                    style={colorConfig.style}
+                  >
                     {getIconComponent(category.icon)}
                   </div>
                   <div className="flex gap-2">
@@ -439,7 +457,7 @@ export default function SettingsPage() {
                   </p>
                 )}
               </motion.div>
-            ))}
+            )})}
           </div>
         </motion.div>
       )}
@@ -872,18 +890,12 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Color
                   </label>
-                  <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
-                    {colorOptions.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, color })}
-                        className={`w-full h-10 rounded-lg bg-gradient-to-br ${color} transition-all ${
-                          formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''
-                        }`}
-                      />
-                    ))}
-                  </div>
+                  <input
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="template-color-input w-full h-10 bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden appearance-none cursor-pointer"
+                  />
                 </div>
 
                 <div>

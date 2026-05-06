@@ -12,6 +12,7 @@ export default function DashboardLayout() {
     const path = location.pathname;
     if (path === '/transactions') return 'transactions';
     if (path === '/recurring-payments') return 'recurring-payments';
+    if (path === '/templates') return 'templates';
     if (path === '/cards') return 'cards';
     if (path === '/analytics') return 'analytics';
     if (path === '/settings') return 'settings';
@@ -24,6 +25,7 @@ export default function DashboardLayout() {
     const path = location.pathname;
     if (path === '/transactions') setActiveTab('transactions');
     else if (path === '/recurring-payments') setActiveTab('recurring-payments');
+    else if (path === '/templates') setActiveTab('templates');
     else if (path === '/cards') setActiveTab('cards');
     else if (path === '/analytics') setActiveTab('analytics');
     else if (path === '/settings') setActiveTab('settings');
@@ -37,6 +39,8 @@ export default function DashboardLayout() {
       navigate('/transactions');
     } else if (tab === 'recurring-payments') {
       navigate('/recurring-payments');
+    } else if (tab === 'templates') {
+      navigate('/templates');
     } else if (tab === 'cards') {
       navigate('/cards');
     } else if (tab === 'analytics') {

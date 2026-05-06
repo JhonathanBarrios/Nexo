@@ -119,7 +119,10 @@ export default function DashboardPage() {
 
   const balance = totalIncome - totalExpenses - totalCardPayments;
 
-  const recentTransactions = transactions.slice(0, 5);
+  // Ordenar transacciones por fecha de creación descendente y tomar las 5 más recientes
+  const recentTransactions = transactions
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
 
   return (
     <Fragment>

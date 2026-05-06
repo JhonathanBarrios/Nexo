@@ -16,6 +16,10 @@ export interface Transaction {
   updated_at: string
 }
 
+interface CreateTransactionInput extends Omit<Transaction, 'id' | 'created_at' | 'updated_at'> {
+  installments_count?: number
+}
+
 export interface TransactionsFilters {
   startDate?: string
   endDate?: string
@@ -42,6 +46,30 @@ export function useTransactions(filters: TransactionsFilters) {
   useEffect(() => {
     fetchTotals()
   }, [filters.startDate, filters.endDate, filters.categoryId, filters.cardId])
+
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const buildDateWithDay = (year: number, month: number, day: number): Date => {
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate()
+    return new Date(year, month, Math.min(day, lastDayOfMonth))
+  }
+
+  const calculateFirstInstallmentDate = (
+    purchaseDate: string,
+    cutDate: number,
+    paymentDate: number
+  ): string => {
+    const purchase = new Date(`${purchaseDate}T00:00:00`)
+    const shouldPaySameMonth = purchase.getDate() <= cutDate
+    const targetMonth = shouldPaySameMonth ? purchase.getMonth() : purchase.getMonth() + 1
+    const targetDate = buildDateWithDay(purchase.getFullYear(), targetMonth, paymentDate)
+    return formatDate(targetDate)
+  }
 
   const fetchTotals = async () => {
     try {
@@ -120,7 +148,8 @@ export function useTransactions(filters: TransactionsFilters) {
       }
 
       // Ordenamiento
-      query = query.order(filters.sortBy, { ascending: filters.sortOrder === 'asc' })
+      const sortByField = filters.sortBy === 'date' ? 'created_at' : filters.sortBy;
+      query = query.order(sortByField, { ascending: filters.sortOrder === 'asc' })
 
       // Paginación
       const from = (filters.page - 1) * filters.pageSize
@@ -139,15 +168,77 @@ export function useTransactions(filters: TransactionsFilters) {
     }
   }
 
-  const createTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
+  const createTransaction = async (transaction: CreateTransactionInput) => {
     try {
+      const { installments_count = 1, ...transactionPayload } = transaction
+
       const { data, error } = await supabase
         .from('transactions')
-        .insert(transaction)
+        .insert(transactionPayload)
         .select()
         .single()
 
       if (error) throw error
+
+      const isCreditInstallmentPurchase =
+        transaction.type === 'expense' &&
+        !!transaction.card_id &&
+        installments_count > 1
+
+      if (isCreditInstallmentPurchase) {
+        try {
+          const { data: cardData, error: cardError } = await supabase
+            .from('cards')
+            .select('id, name, type, cut_date, payment_date')
+            .eq('id', transaction.card_id)
+            .single()
+
+          if (cardError) throw cardError
+
+          const card = cardData as {
+            id: string
+            name: string
+            type: 'credit' | 'debit' | 'cash'
+            cut_date: number | null
+            payment_date: number | null
+          }
+
+          if (card.type === 'credit' && card.cut_date && card.payment_date) {
+            const amountPerInstallment = Number((transaction.amount / installments_count).toFixed(2))
+            const firstDueDate = calculateFirstInstallmentDate(
+              transaction.date,
+              card.cut_date,
+              card.payment_date
+            )
+
+            const { error: recurringError } = await supabase
+              .from('recurring_payments')
+              .insert({
+                user_id: transaction.user_id,
+                category_id: transaction.category_id,
+                description: `Cuotas de ${transaction.description} - ${card.name}`,
+                amount: amountPerInstallment,
+                frequency: 'monthly',
+                next_due_date: firstDueDate,
+                custom_days: null,
+                is_active: true,
+                is_variable: false,
+                pending_cycles: 0,
+                total_pending_amount: 0,
+                is_installment: true,
+                total_cycles: installments_count,
+                remaining_cycles: installments_count,
+                card_id: card.id,
+              })
+
+            if (recurringError) throw recurringError
+          }
+        } catch (installmentError) {
+          await supabase.from('transactions').delete().eq('id', data.id)
+          throw installmentError
+        }
+      }
+
       setTransactions([data, ...transactions])
       fetchTotals() // Actualizar totales después de crear
       return data

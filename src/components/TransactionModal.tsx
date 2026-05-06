@@ -14,21 +14,39 @@ interface TransactionModalProps {
   editingTransaction?: any
   prefilledCardId?: string
   prefilledType?: 'income' | 'expense' | 'payment' | 'withdrawal'
+  prefilledData?: {
+    description?: string
+    amount?: number
+    category_id?: string | null
+    card_id?: string | null
+    source_card_id?: string | null
+    type?: 'income' | 'expense' | 'payment' | 'withdrawal'
+    date?: string
+  }
 }
 
-export function TransactionModal({ isOpen, onClose, onSuccess, editingTransaction, prefilledCardId, prefilledType }: TransactionModalProps) {
+export function TransactionModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  editingTransaction,
+  prefilledCardId,
+  prefilledType,
+  prefilledData,
+}: TransactionModalProps) {
   const [type, setType] = useState<'income' | 'expense' | 'payment' | 'withdrawal'>('expense')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [cardId, setCardId] = useState('')
   const [sourceCardId, setSourceCardId] = useState('')
+  const [installmentsCount, setInstallmentsCount] = useState('1')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
-  
+
   const { categories } = useCategories()
   const { cards } = useCards()
-  
+
   // Filtros mínimos (solo necesitamos las funciones de mutación)
   const defaultFilters: TransactionsFilters = {
     page: 1,
@@ -47,19 +65,24 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
         setCategoryId(editingTransaction.category_id || '')
         setCardId(editingTransaction.card_id || '')
         setSourceCardId(editingTransaction.source_card_id || '')
+        setInstallmentsCount('1')
         setDate(editingTransaction.date)
         setType(editingTransaction.type)
       } else {
-        setDescription('')
-        setAmount('')
-        setCategoryId('')
-        setCardId(prefilledCardId || '')
-        setSourceCardId('')
-        setDate(new Date().toISOString().split('T')[0])
-        setType(prefilledType || 'expense')
+        setDescription(prefilledData?.description || '')
+        setAmount(prefilledData?.amount ? String(prefilledData.amount) : '')
+        setCategoryId(prefilledData?.category_id || '')
+        setCardId(prefilledData?.card_id || prefilledCardId || '')
+        setSourceCardId(prefilledData?.source_card_id || '')
+        setInstallmentsCount('1')
+        setDate(prefilledData?.date || new Date().toISOString().split('T')[0])
+        setType(prefilledData?.type || prefilledType || 'expense')
       }
     }
-  }, [isOpen, editingTransaction, prefilledCardId, prefilledType])
+  }, [isOpen, editingTransaction, prefilledCardId, prefilledType, prefilledData])
+
+  const selectedCard = cards.find((card) => card.id === cardId)
+  const showInstallmentsField = type === 'expense' && selectedCard?.type === 'credit' && !editingTransaction
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,6 +120,7 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
           type,
           date,
           notes: null,
+          installments_count: showInstallmentsField ? Math.max(1, Number(installmentsCount || 1)) : 1,
         })
         toast.success('Transacción creada correctamente')
         onClose()
@@ -224,6 +248,28 @@ export function TransactionModal({ isOpen, onClose, onSuccess, editingTransactio
                     />
                   </div>
                 </div>
+
+                {showInstallmentsField && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Número de cuotas</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={installmentsCount}
+                        onChange={(e) => setInstallmentsCount(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        required
+                      />
+                    </div>
+                    {Number(installmentsCount || 1) > 1 && (
+                      <p className="text-slate-400 text-xs mt-1">
+                        Se creará un pago recurrente mensual por {Number(installmentsCount)} cuotas.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Category */}
                 <div>
