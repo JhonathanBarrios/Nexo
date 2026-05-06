@@ -168,11 +168,11 @@ export default function RecurringPaymentsPage() {
     return categories.find(c => c.id === categoryId);
   };
 
-  const handlePayment = async (amount: number, payAllPending: boolean) => {
+  const handlePayment = async (amount: number, payAllPending: boolean, installmentsToPay: number) => {
     if (!selectedPayment || !user?.id) return;
     
     try {
-      await markAsPaid(selectedPayment.id, amount, user.id, payAllPending);
+      await markAsPaid(selectedPayment.id, amount, user.id, payAllPending, installmentsToPay);
       toast.success('Pago registrado correctamente');
       setShowPaymentModal(false);
       setSelectedPayment(null);
@@ -333,6 +333,14 @@ export default function RecurringPaymentsPage() {
                       <span className="text-slate-400 text-xs lg:text-sm">{category?.name || 'Sin categoría'}</span>
                       <span className="text-slate-600 hidden sm:inline">•</span>
                       <span className="text-slate-400 text-xs lg:text-sm hidden sm:inline">{frequencyLabels[payment.frequency]}</span>
+                      {payment.is_installment && (
+                        <>
+                          <span className="text-slate-600 hidden sm:inline">•</span>
+                          <span className="text-blue-400 text-xs lg:text-sm">
+                            Cuotas {payment.remaining_cycles ?? payment.total_cycles ?? 0}/{payment.total_cycles ?? 0}
+                          </span>
+                        </>
+                      )}
                       <span className="text-slate-600 hidden sm:inline">•</span>
                       <span className={`text-xs lg:text-sm ${isOverdue ? 'text-red-400' : isUpcoming ? 'text-amber-400' : 'text-slate-400'}`}>
                         {isOverdue ? `Vencido hace ${Math.abs(daysUntilDue)} días` : 
@@ -522,6 +530,32 @@ export default function RecurringPaymentsPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
+                        Pago Variable
+                      </label>
+                      <p className="text-xs text-slate-500">
+                        {formData.is_variable
+                          ? 'El monto puede variar cada mes (requiere tracking)'
+                          : 'Monto fijo mensual'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_variable: !formData.is_variable })}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        formData.is_variable ? 'bg-emerald-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <motion.span
+                        initial={false}
+                        animate={{ x: formData.is_variable ? 24 : 0 }}
+                        className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow"
+                      />
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Descripción</label>
                     <input
@@ -618,19 +652,6 @@ export default function RecurringPaymentsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="is_variable"
-                      checked={formData.is_variable}
-                      onChange={(e) => setFormData({ ...formData, is_variable: e.target.checked })}
-                      className="w-5 h-5 rounded border-slate-600 text-blue-500 focus:ring-blue-500 bg-slate-800"
-                    />
-                    <label htmlFor="is_variable" className="text-sm font-medium text-slate-300">
-                      Pago variable (requiere tracking de uso)
-                    </label>
-                  </div>
-
                   <motion.button
                     type="submit"
                     whileHover={{ scale: 1.02 }}
@@ -670,6 +691,9 @@ export default function RecurringPaymentsPage() {
           pending_cycles: selectedPayment.pending_cycles,
           total_pending_amount: selectedPayment.total_pending_amount,
           is_variable: selectedPayment.is_variable,
+          is_installment: selectedPayment.is_installment,
+          total_cycles: selectedPayment.total_cycles,
+          remaining_cycles: selectedPayment.remaining_cycles,
         } : null}
       />
 

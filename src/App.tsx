@@ -13,6 +13,7 @@ import SettingsPage from './pages/SettingsPage'
 import RecurringPaymentsPage from './pages/RecurringPaymentsPage'
 import CardsPage from './pages/CardsPage'
 import SavingsPage from './pages/SavingsPage'
+import TemplatesPage from './pages/TemplatesPage'
 import PWAUpdateBanner from './components/PWAUpdateBanner'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/recurring-payments" element={<RecurringPaymentsPage />} />
           <Route path="/savings" element={<SavingsPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

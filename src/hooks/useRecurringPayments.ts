@@ -14,6 +14,10 @@ export interface RecurringPayment {
   is_variable: boolean
   pending_cycles: number
   total_pending_amount: number
+  is_installment?: boolean
+  total_cycles?: number | null
+  remaining_cycles?: number | null
+  card_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -291,38 +295,96 @@ export function useRecurringPayments() {
     paymentId: string,
     amount: number,
     userId: string,
-    _payAllPending: boolean = true
+    _payAllPending: boolean = true,
+    installmentsToPay: number = 1
   ) => {
     try {
       const payment = payments.find(p => p.id === paymentId)
       if (!payment) throw new Error('Payment not found')
 
-      // Create transaction
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
+      const today = new Date().toISOString().split('T')[0]
+
+      if (payment.is_installment) {
+        const totalCycles = payment.total_cycles || 0
+        const remainingCycles = payment.remaining_cycles ?? totalCycles
+        const installments = Math.max(1, Math.floor(installmentsToPay || 1))
+
+        if (!payment.card_id) {
+          throw new Error('Este pago a cuotas no tiene tarjeta asociada')
+        }
+
+        if (installments > remainingCycles) {
+          throw new Error(`No puedes pagar ${installments} cuotas. Solo quedan ${remainingCycles}.`)
+        }
+
+        const amountPerInstallment = Number(payment.amount || 0)
+        const paidInstallments = Math.max(totalCycles - remainingCycles, 0)
+
+        const installmentTransactions = Array.from({ length: installments }, (_, index) => ({
           user_id: userId,
           category_id: payment.category_id,
-          description: payment.description,
-          amount: amount,
-          type: 'expense',
-          date: new Date().toISOString().split('T')[0],
-        })
+          card_id: payment.card_id,
+          source_card_id: null,
+          description: totalCycles > 0
+            ? `${payment.description} - Cuota ${paidInstallments + index + 1}/${totalCycles}`
+            : payment.description,
+          amount: amountPerInstallment,
+          type: 'payment',
+          date: today,
+          notes: null,
+        }))
 
-      if (transactionError) throw transactionError
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .insert(installmentTransactions)
 
-      // Update payment with new due date and reset pending cycles
-      const newDueDate = getNextDueDate(payment.frequency, payment.next_due_date, payment.custom_days || undefined)
-      const { error: updateError } = await supabase
-        .from('recurring_payments')
-        .update({
-          next_due_date: newDueDate,
-          pending_cycles: 0,
-          total_pending_amount: 0,
-        })
-        .eq('id', paymentId)
+        if (transactionError) throw transactionError
 
-      if (updateError) throw updateError
+        const newRemainingCycles = remainingCycles - installments
+        const nextDueDate = newRemainingCycles > 0
+          ? getNextDueDate('monthly', payment.next_due_date)
+          : payment.next_due_date
+
+        const { error: updateError } = await supabase
+          .from('recurring_payments')
+          .update({
+            next_due_date: nextDueDate,
+            remaining_cycles: newRemainingCycles,
+            is_active: newRemainingCycles > 0,
+            pending_cycles: 0,
+            total_pending_amount: 0,
+          })
+          .eq('id', paymentId)
+
+        if (updateError) throw updateError
+      } else {
+        // Create transaction
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: userId,
+            category_id: payment.category_id,
+            description: payment.description,
+            amount: amount,
+            type: 'expense',
+            date: today,
+          })
+
+        if (transactionError) throw transactionError
+
+        // Update payment with new due date and reset pending cycles
+        const newDueDate = getNextDueDate(payment.frequency, payment.next_due_date, payment.custom_days || undefined)
+        const { error: updateError } = await supabase
+          .from('recurring_payments')
+          .update({
+            next_due_date: newDueDate,
+            pending_cycles: 0,
+            total_pending_amount: 0,
+          })
+          .eq('id', paymentId)
+
+        if (updateError) throw updateError
+      }
 
       // Refresh payments
       await fetchPayments()

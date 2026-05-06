@@ -11,6 +11,7 @@ import { RecentTransactions } from '../components/RecentTransactions';
 import { formatCurrency } from '../utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import toast from 'react-hot-toast';
+import EmptyCards from '../components/EmptyCards';
 
 export default function CardsPage() {
   const { cards, loading, createCard, updateCard, deleteCard, updateCardBalance } = useCards();
@@ -194,24 +195,7 @@ export default function CardsPage() {
       {loading ? (
         <div className="text-center py-12 text-slate-400">Cargando tarjetas...</div>
       ) : cards.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-16"
-        >
-          <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CreditCard className="w-12 h-12 text-slate-500" />
-          </div>
-          <h3 className="text-white text-xl font-semibold mb-2">No tienes tarjetas registradas</h3>
-          <p className="text-slate-400 mb-6">Comienza agregando tu primera tarjeta para llevar un control de tus gastos</p>
-          <button
-            onClick={handleCreateCard}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Agregar Tarjeta
-          </button>
-        </motion.div>
+        <EmptyCards onCreateCard={handleCreateCard} />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -314,6 +298,14 @@ export default function CardsPage() {
                         <span className="text-white/80 text-[10px] font-medium uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
                           {getCardTypeLabel(card.type)}
                         </span>
+                      </div>
+
+                      <div className="absolute bottom-4 right-4">
+                        {card.payment_date && card.type === 'credit' && (
+                          <span className="text-white/80 text-[10px] font-medium uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                            Pago: {card.payment_date}
+                          </span>
+                        )}
                       </div>
                     </motion.div>
                   );

@@ -72,6 +72,10 @@ export default function SavingsPage() {
 
   const totalSavings = getTotalSavings();
 
+  // Dividir bolsillos en dos grupos
+  const accountsWithoutGoal = accounts.filter(a => !a.is_goal_based);
+  const accountsWithGoal = accounts.filter(a => a.is_goal_based);
+
   const handleCreateAccount = async (accountData: any) => {
     if (!user?.id) return;
 
@@ -239,231 +243,403 @@ export default function SavingsPage() {
         </div>
       </motion.div>
 
-      <div className="space-y-4">
-        <AnimatePresence>
-          {accounts.map((account) => {
-            const progress = getProgress(account.id);
-            const percentComplete = progress?.percentComplete || 0;
-            const isExpanded = expandedAccount === account.id;
-            const monthlyData = getMonthlyStats(account.id, new Date().getFullYear());
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bolsillos sin meta (izquierda) */}
+        <div>
+          <h2 className="text-white text-lg font-semibold mb-4 flex items-center gap-2">
+            <PiggyBank className="w-5 h-5 text-slate-400" />
+            Bolsillos Abiertos
+            <span className="text-slate-500 text-sm font-normal">({accountsWithoutGoal.length})</span>
+          </h2>
+          <div className="space-y-4">
+            <AnimatePresence>
+              {accountsWithoutGoal.map((account) => {
+                const progress = getProgress(account.id);
+                const isExpanded = expandedAccount === account.id;
+                const monthlyData = getMonthlyStats(account.id, new Date().getFullYear());
 
-            return (
-              <motion.div
-                key={account.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={`bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden border border-slate-800/50 ${
-                  account.is_completed ? 'border-emerald-500/30' : ''
-                }`}
-              >
-                <div className="p-4 lg:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
-                        style={{ backgroundColor: account.color }}
-                      >
-                        <PiggyBank className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-white font-semibold text-lg">{account.name}</p>
-                          {account.is_completed && (
-                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Completado
-                            </span>
-                          )}
-                          {!account.is_goal_based && (
-                            <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded-full">
-                              Abierto
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-slate-400 text-sm">
-                          {account.is_goal_based
-                            ? `${frequencyLabels[account.frequency!]} • Día ${account.deposit_day}`
-                            : 'Sin meta fija'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {!account.is_completed && (
-                        <>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDepositClick(account)}
-                            className="p-2 bg-emerald-500/20 rounded-lg hover:bg-emerald-500/30 transition-colors"
-                            title="Registrar depósito"
-                          >
-                            <DollarSign className="w-4 h-4 text-emerald-400" />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleStatsClick(account)}
-                            className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors"
-                            title="Ver estadísticas"
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="w-4 h-4 text-blue-400" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-blue-400" />
-                            )}
-                          </motion.button>
-                        </>
-                      )}
-                      <div className="relative">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setActionMenuOpen(actionMenuOpen === account.id ? null : account.id)}
-                          className="p-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4 text-slate-400" />
-                        </motion.button>
-                        <AnimatePresence>
-                          {actionMenuOpen === account.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className="absolute right-0 top-full mt-2 w-48 bg-slate-800 rounded-xl border border-slate-700 shadow-xl z-10 overflow-hidden"
-                            >
-                              <button
-                                onClick={() => {
-                                  handleEditAccount(account);
-                                  setActionMenuOpen(null);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
-                              >
-                                <Edit2 className="w-4 h-4 text-blue-400" />
-                                <span className="text-slate-300 text-sm">Editar</span>
-                              </button>
-                              {!account.is_completed && (
-                                <button
-                                  onClick={() => {
-                                    handleMarkCompleted(account);
-                                    setActionMenuOpen(null);
-                                  }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
-                                >
-                                  <CheckCircle className="w-4 h-4 text-emerald-400" />
-                                  <span className="text-slate-300 text-sm">Marcar completado</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  handleDeleteAccount(account);
-                                  setActionMenuOpen(null);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-400" />
-                                <span className="text-slate-300 text-sm">Eliminar</span>
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-slate-400 text-sm">
-                          {account.is_goal_based ? 'Ahorrado / Meta' : 'Total Guardado'}
-                        </span>
-                        {account.is_goal_based && (
-                          <span
-                            className={`text-xs font-medium ${
-                              percentComplete >= 100 ? 'text-emerald-400' : 'text-slate-300'
-                            }`}
-                          >
-                            {percentComplete.toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-white text-2xl font-bold">
-                        {formatCurrency(account.current_balance)}
-                      </p>
-                      {account.is_goal_based && (
-                        <p className="text-slate-500 text-sm mt-1">
-                          de {formatCurrency(account.goal_amount!)}
-                        </p>
-                      )}
-                    </div>
-
-                    {account.is_goal_based ? (
-                      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 flex flex-col justify-center">
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-slate-400">Faltante</span>
-                          <span className="text-amber-400 font-medium">
-                            {formatCurrency(Math.max(0, account.goal_amount! - account.current_balance))}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-700 rounded-full h-2">
-                          <div
-                            className="h-2 rounded-full transition-all"
-                            style={{
-                              width: `${Math.min(percentComplete, 100)}%`,
-                              backgroundColor: account.color,
-                            }}
-                          />
-                        </div>
-                        <p className="text-slate-500 text-xs mt-2">
-                          {progress?.streak || 0} depósitos consecutivos
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 flex flex-col justify-center">
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-slate-400">Depósitos</span>
-                          <span className="text-white font-medium">
-                            {deposits.get(account.id)?.length || 0}
-                          </span>
-                        </div>
-                        <p className="text-slate-500 text-xs">
-                          Promedio: {deposits.get(account.id)?.length
-                            ? formatCurrency(account.current_balance / deposits.get(account.id)!.length)
-                            : formatCurrency(0)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {isExpanded && progress && (
+                return (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="px-4 lg:px-6 pb-4 lg:pb-6 pt-2 border-t border-slate-700/50"
+                    key={account.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={`bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden border border-slate-800/50 ${
+                      account.is_completed ? 'border-emerald-500/30' : ''
+                    }`}
                   >
-                    <SavingsStats
-                      account={account}
-                      progress={progress}
-                      monthlyData={monthlyData}
-                      year={new Date().getFullYear()}
-                    />
-                  </motion.div>
-                )}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                    <div className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+                            style={{ backgroundColor: account.color }}
+                          >
+                            <PiggyBank className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-semibold text-lg">{account.name}</p>
+                              {account.is_completed && (
+                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> Completado
+                                </span>
+                              )}
+                              <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded-full">
+                                Abierto
+                              </span>
+                            </div>
+                            <p className="text-slate-400 text-sm">
+                              Sin meta fija
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {!account.is_completed && (
+                            <>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleDepositClick(account)}
+                                className="p-2 bg-emerald-500/20 rounded-lg hover:bg-emerald-500/30 transition-colors"
+                                title="Registrar depósito"
+                              >
+                                <DollarSign className="w-4 h-4 text-emerald-400" />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleStatsClick(account)}
+                                className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors"
+                                title="Ver estadísticas"
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="w-4 h-4 text-blue-400" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-blue-400" />
+                                )}
+                              </motion.button>
+                            </>
+                          )}
+                          <div className="relative">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => setActionMenuOpen(actionMenuOpen === account.id ? null : account.id)}
+                              className="p-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
+                            >
+                              <MoreVertical className="w-4 h-4 text-slate-400" />
+                            </motion.button>
+                            <AnimatePresence>
+                              {actionMenuOpen === account.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.95 }}
+                                  className="absolute right-0 top-full mt-2 w-48 bg-slate-800 rounded-xl border border-slate-700 shadow-xl z-10 overflow-hidden"
+                                >
+                                  <button
+                                    onClick={() => {
+                                      handleEditAccount(account);
+                                      setActionMenuOpen(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
+                                  >
+                                    <Edit2 className="w-4 h-4 text-blue-400" />
+                                    <span className="text-slate-300 text-sm">Editar</span>
+                                  </button>
+                                  {!account.is_completed && (
+                                    <button
+                                      onClick={() => {
+                                        handleMarkCompleted(account);
+                                        setActionMenuOpen(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
+                                    >
+                                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                      <span className="text-slate-300 text-sm">Marcar completado</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      handleDeleteAccount(account);
+                                      setActionMenuOpen(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-400" />
+                                    <span className="text-slate-300 text-sm">Eliminar</span>
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </div>
+                      </div>
 
-        {accounts.length === 0 && (
-          <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-8 border border-slate-800/50 text-center">
-            <PiggyBank className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400 text-lg">No hay bolsillos de ahorro</p>
-            <p className="text-slate-500 text-sm mt-2">
-              Crea tu primer bolsillo para comenzar a ahorrar
-            </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-slate-400 text-sm">Total Guardado</span>
+                          </div>
+                          <p className="text-white text-2xl font-bold">
+                            {formatCurrency(account.current_balance)}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 flex flex-col justify-center">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-slate-400">Depósitos</span>
+                            <span className="text-white font-medium">
+                              {deposits.get(account.id)?.length || 0}
+                            </span>
+                          </div>
+                          <p className="text-slate-500 text-xs">
+                            Promedio: {deposits.get(account.id)?.length
+                              ? formatCurrency(account.current_balance / deposits.get(account.id)!.length)
+                              : formatCurrency(0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && progress && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="px-4 lg:px-6 pb-4 lg:pb-6 pt-2 border-t border-slate-700/50"
+                      >
+                        <SavingsStats
+                          account={account}
+                          progress={progress}
+                          monthlyData={monthlyData}
+                          year={new Date().getFullYear()}
+                        />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {accountsWithoutGoal.length === 0 && (
+              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-8 border border-slate-800/50 text-center">
+                <PiggyBank className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400 text-sm">No hay bolsillos abiertos</p>
+                <p className="text-slate-500 text-xs mt-2">
+                  Crea un bolsillo abierto para ahorrar libremente
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Bolsillos con meta (derecha) */}
+        <div>
+          <h2 className="text-white text-lg font-semibold mb-4 flex items-center gap-2">
+            <PiggyBank className="w-5 h-5 text-emerald-400" />
+            Bolsillos con Meta
+            <span className="text-slate-500 text-sm font-normal">({accountsWithGoal.length})</span>
+          </h2>
+          <div className="space-y-4">
+            <AnimatePresence>
+              {accountsWithGoal.map((account) => {
+                const progress = getProgress(account.id);
+                const percentComplete = progress?.percentComplete || 0;
+                const isExpanded = expandedAccount === account.id;
+                const monthlyData = getMonthlyStats(account.id, new Date().getFullYear());
+
+                return (
+                  <motion.div
+                    key={account.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={`bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden border border-slate-800/50 ${
+                      account.is_completed ? 'border-emerald-500/30' : ''
+                    }`}
+                  >
+                    <div className="p-4 lg:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+                            style={{ backgroundColor: account.color }}
+                          >
+                            <PiggyBank className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-semibold text-lg">{account.name}</p>
+                              {account.is_completed && (
+                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> Completado
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-400 text-sm">
+                              {frequencyLabels[account.frequency!]} • Día {account.deposit_day}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {!account.is_completed && (
+                            <>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleDepositClick(account)}
+                                className="p-2 bg-emerald-500/20 rounded-lg hover:bg-emerald-500/30 transition-colors"
+                                title="Registrar depósito"
+                              >
+                                <DollarSign className="w-4 h-4 text-emerald-400" />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleStatsClick(account)}
+                                className="p-2 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 transition-colors"
+                                title="Ver estadísticas"
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="w-4 h-4 text-blue-400" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-blue-400" />
+                                )}
+                              </motion.button>
+                            </>
+                          )}
+                          <div className="relative">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => setActionMenuOpen(actionMenuOpen === account.id ? null : account.id)}
+                              className="p-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
+                            >
+                              <MoreVertical className="w-4 h-4 text-slate-400" />
+                            </motion.button>
+                            <AnimatePresence>
+                              {actionMenuOpen === account.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.95 }}
+                                  className="absolute right-0 top-full mt-2 w-48 bg-slate-800 rounded-xl border border-slate-700 shadow-xl z-10 overflow-hidden"
+                                >
+                                  <button
+                                    onClick={() => {
+                                      handleEditAccount(account);
+                                      setActionMenuOpen(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
+                                  >
+                                    <Edit2 className="w-4 h-4 text-blue-400" />
+                                    <span className="text-slate-300 text-sm">Editar</span>
+                                  </button>
+                                  {!account.is_completed && (
+                                    <button
+                                      onClick={() => {
+                                        handleMarkCompleted(account);
+                                        setActionMenuOpen(null);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
+                                    >
+                                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                      <span className="text-slate-300 text-sm">Marcar completado</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      handleDeleteAccount(account);
+                                      setActionMenuOpen(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-700 transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-400" />
+                                    <span className="text-slate-300 text-sm">Eliminar</span>
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-slate-400 text-sm">Ahorrado / Meta</span>
+                            <span
+                              className={`text-xs font-medium ${
+                                percentComplete >= 100 ? 'text-emerald-400' : 'text-slate-300'
+                              }`}
+                            >
+                              {percentComplete.toFixed(0)}%
+                            </span>
+                          </div>
+                          <p className="text-white text-2xl font-bold">
+                            {formatCurrency(account.current_balance)}
+                          </p>
+                          <p className="text-slate-500 text-sm mt-1">
+                            de {formatCurrency(account.goal_amount!)}
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 flex flex-col justify-center">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-slate-400">Faltante</span>
+                            <span className="text-amber-400 font-medium">
+                              {formatCurrency(Math.max(0, account.goal_amount! - account.current_balance))}
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-700 rounded-full h-2">
+                            <div
+                              className="h-2 rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(percentComplete, 100)}%`,
+                                backgroundColor: account.color,
+                              }}
+                            />
+                          </div>
+                          <p className="text-slate-500 text-xs mt-2">
+                            {progress?.streak || 0} depósitos consecutivos
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && progress && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="px-4 lg:px-6 pb-4 lg:pb-6 pt-2 border-t border-slate-700/50"
+                      >
+                        <SavingsStats
+                          account={account}
+                          progress={progress}
+                          monthlyData={monthlyData}
+                          year={new Date().getFullYear()}
+                        />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {accountsWithGoal.length === 0 && (
+              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-8 border border-slate-800/50 text-center">
+                <PiggyBank className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400 text-sm">No hay bolsillos con meta</p>
+                <p className="text-slate-500 text-xs mt-2">
+                  Crea un bolsillo con meta para tener un objetivo de ahorro
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <SavingsAccountModal
