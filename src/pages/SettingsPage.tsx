@@ -893,7 +893,7 @@ export default function SettingsPage() {
                         key={icon}
                         type="button"
                         onClick={() => setFormData({ ...formData, icon })}
-                        className={`p-2 rounded-lg transition-all ${
+                        className={`p-2 rounded-lg transition-all flex items-center justify-center ${
                           formData.icon === icon
                             ? 'bg-blue-500/20 border border-blue-500'
                             : 'hover:bg-slate-700'

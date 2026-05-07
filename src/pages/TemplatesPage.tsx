@@ -121,15 +121,17 @@ export default function TemplatesPage() {
             <h1 className="text-white text-2xl lg:text-3xl font-bold mb-2">Plantillas</h1>
             <p className="text-slate-400 text-sm lg:text-base">Crea transacciones repetitivas en segundos</p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleCreateTemplate}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nueva Plantilla</span>
-          </motion.button>
+          {templates.length > 0 && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleCreateTemplate}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all max-w-[200px] mx-auto sm:w-auto sm:mx-0 sm:max-w-none"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nueva Plantilla</span>
+            </motion.button>
+          )}
         </div>
       </motion.div>
 

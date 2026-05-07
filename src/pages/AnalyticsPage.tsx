@@ -504,15 +504,16 @@ export default function AnalyticsPage() {
         className="mb-6"
       >
         <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-800/50">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+          <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 text-slate-400">
               <Calendar className="w-5 h-5" />
               <span className="font-medium">Período:</span>
             </div>
-            <div className="flex flex-wrap gap-2 flex-1">
+            {/* Carousel de filtros para móvil */}
+            <div className="flex md:flex-wrap gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
               <button
                 onClick={() => setDateFilter('this_month')}
-                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                   dateFilter === 'this_month'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                     : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -522,7 +523,7 @@ export default function AnalyticsPage() {
               </button>
               <button
                 onClick={() => setDateFilter('last_month')}
-                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                   dateFilter === 'last_month'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                     : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -532,7 +533,7 @@ export default function AnalyticsPage() {
               </button>
               <button
                 onClick={() => setDateFilter('last_3_months')}
-                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                   dateFilter === 'last_3_months'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                     : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -542,7 +543,7 @@ export default function AnalyticsPage() {
               </button>
               <button
                 onClick={() => setDateFilter('this_year')}
-                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                   dateFilter === 'this_year'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                     : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -552,7 +553,7 @@ export default function AnalyticsPage() {
               </button>
               <button
                 onClick={() => setDateFilter('custom')}
-                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                   dateFilter === 'custom'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                     : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -561,22 +562,30 @@ export default function AnalyticsPage() {
                 Personalizado
               </button>
             </div>
+            {/* Filtros de fecha personalizada fuera del carrusel */}
             {dateFilter === 'custom' && (
-              <div className="flex items-center gap-2 mt-2 md:mt-0">
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-slate-400">a</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="pt-2 border-t border-slate-700"
+              >
+                <div className="flex items-center gap-2 sm:max-w-md">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="flex-1 min-w-0 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-slate-400">a</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="flex-1 min-w-0 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </motion.div>
             )}
           </div>
         </div>

@@ -12,6 +12,8 @@ import { formatCurrency } from '../utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 import EmptyCards from '../components/EmptyCards';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { supabase } from '../api/supabase';
 
 export default function CardsPage() {
   const { cards, loading, createCard, updateCard, deleteCard, updateCardBalance } = useCards();
@@ -23,6 +25,12 @@ export default function CardsPage() {
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [prefilledCardId, setPrefilledCardId] = useState('');
   const [prefilledType, setPrefilledType] = useState<'income' | 'expense' | 'payment' | 'withdrawal'>('expense');
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; onConfirm: () => void; title: string; message: string }>({
+    isOpen: false,
+    onConfirm: () => {},
+    title: '',
+    message: '',
+  });
 
   // Filtros dinámicos para cargar solo transacciones de la tarjeta seleccionada
   const cardTransactionsFilters: TransactionsFilters = {
@@ -65,13 +73,50 @@ export default function CardsPage() {
   };
 
   const handleDeleteCard = async (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar esta tarjeta?')) {
-      try {
-        await deleteCard(id);
-        toast.success('Tarjeta eliminada correctamente');
-      } catch (error: any) {
-        toast.error('Error al eliminar tarjeta: ' + error.message);
+    try {
+      // Verificar si la tarjeta tiene transacciones asociadas
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('card_id', id)
+        .limit(1);
+
+      // Verificar si la tarjeta tiene pagos recurrentes asociados
+      const { data: recurringPayments } = await supabase
+        .from('recurring_payments')
+        .select('id')
+        .eq('card_id', id)
+        .limit(1);
+
+      const hasTransactions = transactions && transactions.length > 0;
+      const hasRecurringPayments = recurringPayments && recurringPayments.length > 0;
+
+      if (hasTransactions || hasRecurringPayments) {
+        let message = 'No puedes eliminar esta tarjeta porque tiene datos asociados: ';
+        const reasons = [];
+        if (hasTransactions) reasons.push('transacciones');
+        if (hasRecurringPayments) reasons.push('pagos recurrentes');
+        message += reasons.join(' y ') + '. Elimina primero los datos asociados.';
+        toast(message, { icon: '⚠️' });
+        return;
       }
+
+      // Si no tiene datos asociados, mostrar diálogo de confirmación
+      setConfirmDialog({
+        isOpen: true,
+        onConfirm: async () => {
+          try {
+            await deleteCard(id);
+            toast.success('Tarjeta eliminada correctamente');
+          } catch (error: any) {
+            toast.error('Error al eliminar tarjeta: ' + error.message);
+          }
+        },
+        title: 'Eliminar Tarjeta',
+        message: '¿Estás seguro de eliminar esta tarjeta? Esta acción no se puede deshacer.',
+      });
+    } catch (error: any) {
+      toast.error('Error al verificar datos de la tarjeta: ' + error.message);
     }
   };
 
@@ -183,7 +228,7 @@ export default function CardsPage() {
           </div>
           <button
             onClick={handleCreateCard}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all max-w-[200px] mx-auto sm:w-auto sm:mx-0 sm:max-w-none"
           >
             <Plus className="w-5 h-5" />
             Nueva Tarjeta
@@ -513,6 +558,15 @@ export default function CardsPage() {
         onSuccess={handleTransactionSuccess}
         prefilledCardId={prefilledCardId}
         prefilledType={prefilledType}
+      />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onConfirm={confirmDialog.onConfirm}
+        onClose={() => setConfirmDialog({ isOpen: false, onConfirm: () => {}, title: '', message: '' })}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
       />
     </div>
   );
