@@ -215,11 +215,11 @@ export default function TransactionsPage() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowModal(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all max-w-[200px] mx-auto sm:w-auto sm:mx-0 sm:max-w-none"
           >
             <Plus className="w-5 h-5" />
             <span className="hidden md:inline">Nueva Transacción</span>
-            <span className="md:hidden">Nueva Transacción</span>
+            <span className="md:hidden">Nuevo</span>
           </motion.button>
         </div>
 
@@ -345,15 +345,16 @@ export default function TransactionsPage() {
         </div>
 
         {/* Date Filters */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4 border-t border-slate-800">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2 text-slate-400">
             <Calendar className="w-5 h-5" />
             <span className="font-medium">Filtrar por:</span>
           </div>
-          <div className="flex flex-wrap gap-2 flex-1">
+          {/* Carousel de filtros para móvil */}
+          <div className="flex md:flex-wrap gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
             <button
               onClick={() => setDateFilter('today')}
-              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                 dateFilter === 'today'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -363,7 +364,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setDateFilter('this_month')}
-              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                 dateFilter === 'this_month'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -373,7 +374,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setDateFilter('last_month')}
-              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                 dateFilter === 'last_month'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -383,7 +384,7 @@ export default function TransactionsPage() {
             </button>
             <button
               onClick={() => setDateFilter('custom')}
-              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
                 dateFilter === 'custom'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -391,23 +392,25 @@ export default function TransactionsPage() {
             >
               Personalizado
             </button>
-            {dateFilter === 'custom' && (
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                />
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                />
-              </div>
-            )}
           </div>
+          {/* Filtros de fecha personalizada fuera del carrusel */}
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="flex-1 min-w-0 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-400">a</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="flex-1 min-w-0 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
         </div>
 
         {/* Sort and Export */}
@@ -425,7 +428,10 @@ export default function TransactionsPage() {
               <option value="lowest">Menor monto</option>
             </select>
           </div>
-          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+          <button 
+            onClick={() => toast('Funcionalidad en curso', { icon: '⚠️' })}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+          >
             <Download className="w-5 h-5" />
             <span>Exportar</span>
           </button>

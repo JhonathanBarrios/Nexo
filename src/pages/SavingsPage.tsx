@@ -217,11 +217,10 @@ export default function SavingsPage() {
               setEditingAccount(null);
               setShowAccountModal(true);
             }}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all max-w-[200px] mx-auto sm:w-auto sm:mx-0 sm:max-w-none"
           >
             <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Nuevo Bolsillo</span>
-            <span className="sm:hidden">Nuevo</span>
+            Nuevo Bolsillo
           </motion.button>
         </div>
 
